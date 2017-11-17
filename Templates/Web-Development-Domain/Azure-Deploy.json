@@ -1,0 +1,1342 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"applicationGatewayAuthenticationCertificatePublicKeyValue": {
+			"metadata": {
+				"description": "If you do not have \"real\" certificates, run https://raw.githubusercontent.com/RegionOrebroLan/Azure-Resource-Manager-Templates/master/Templates/Web-Development-Domain/Certificate-Values.ps1 to get the value. Read more: https://docs.microsoft.com/en-us/azure/application-gateway/application-gateway-ssl#upload-ssl-certificates"
+			},
+			"type": "securestring"
+		},
+		"applicationGatewayAuthenticationCertificateValue": {
+			"metadata": {
+				"description": "If you do not have \"real\" certificates, run https://raw.githubusercontent.com/RegionOrebroLan/Azure-Resource-Manager-Templates/master/Templates/Web-Development-Domain/Certificate-Values.ps1 to get the value. Read more: https://docs.microsoft.com/en-us/azure/application-gateway/application-gateway-ssl#upload-ssl-certificates"
+			},
+			"type": "securestring"
+		},
+		"applicationGatewaySslCertificateValue": {
+			"metadata": {
+				"description": "If you do not have \"real\" certificates, run https://raw.githubusercontent.com/RegionOrebroLan/Azure-Resource-Manager-Templates/master/Templates/Web-Development-Domain/Certificate-Values.ps1 to get the value. Read more: https://docs.microsoft.com/en-us/azure/application-gateway/application-gateway-ssl-portal#add-an-https-listener"
+			},
+			"type": "securestring"
+		},
+		"domainName": {
+			"defaultValue": "local.net",
+			"metadata": {
+				"description": "The name of the domain."
+			},
+			"type": "string"
+		},
+		"ipAddressFirstPart": {
+			"defaultValue": 10,
+			"maxValue": 254,
+			"metadata": {
+				"description": "The ip-address-first-part is used together with the ip-address-second-part. The combination will be used as the beginning of all ip-addresses in this deployment, '[IP-ADDRESS-FIRST-PART].[IP-ADDRESS-SECOND-PART].0.10'. The default value is just an example. Be sure to enter a value that does not conflict with other networks in the resource-group. Eg. 10.0.0.10 for an ip-address and 10.0.0.0/24 for an ip-address-space."
+			},
+			"minValue": 1,
+			"type": "int"
+		},
+		"ipAddressSecondPart": {
+			"defaultValue": 0,
+			"maxValue": 254,
+			"metadata": {
+				"description": "The ip-address-second-part is used together with the ip-address-first-part. The combination will be used as the beginning of all ip-addresses in this deployment, '[IP-ADDRESS-FIRST-PART].[IP-ADDRESS-SECOND-PART].0.10'. The default value is just an example. Be sure to enter a value that does not conflict with other networks in the resource-group. Eg. 10.0.0.10 for an ip-address and 10.0.0.0/24 for an ip-address-space."
+			},
+			"minValue": 0,
+			"type": "int"
+		},
+		"password": {
+			"metadata": {
+				"description": "Password for all machines in this deployments."
+			},
+			"type": "securestring"
+		},
+		"resourceNamePrefix": {
+			"maxLength": 5,
+			"metadata": {
+				"description": "The prefix will be added at the beginning of all names in this deployment. Letters, numbers and hyphens are recomended. Eg. 'AB01-'."
+			},
+			"type": "string"
+		},
+		"userName": {
+			"metadata": {
+				"description": "User-name for all machines in this deployments."
+			},
+			"type": "securestring"
+		},
+		"virtualNetworkGatewayCertificateValue": {
+			"metadata": {
+				"description": "If you do not have \"real\" certificates, run https://raw.githubusercontent.com/RegionOrebroLan/Azure-Resource-Manager-Templates/master/Templates/Web-Development-Domain/Certificate-Values.ps1 to get the value. Read more: https://docs.microsoft.com/en-us/azure/vpn-gateway/vpn-gateway-howto-point-to-site-resource-manager-portal#generatecert"
+			},
+			"type": "securestring"
+		}
+	},
+	"variables": {
+		"_help": "https://docs.microsoft.com/en-us/azure/templates/microsoft.resources/deployments",
+		"adfsAlias": "adfs",
+		"adfsCertificateTemplateDisplayName": "SSL Certificate Template",
+		"adfsCertificateTemplateName": "SslCertificateTemplate",
+		"adfsCertificateTemplateNames": "[concat(variables('adfsCertificateTemplateName'), ';', variables('adfsCertificateTemplateDisplayName'))]",
+		"adfsDeploymentName": "[concat(variables('adfsName'), '-Deployment')]",
+		"adfsIp": "[concat(variables('ipAddressPrefix'), '0.20')]",
+		"adfsName": "[concat(variables('resourceNamePrefix'), 'ADFS-01')]",
+		"applicationGatewayInternalName": "[concat(variables('resourceNamePrefix'), 'Application-Gateway-Internal')]",
+		"applicationGatewayInternalResourceId": "[resourceId('Microsoft.Network/applicationGateways', variables('applicationGatewayInternalName'))]",
+		"applicationGatewayIpName": "[concat(variables('applicationGatewayName'), '-IP')]",
+		"applicationGatewayName": "[concat(variables('resourceNamePrefix'), 'Application-Gateway')]",
+		"applicationGatewayResourceId": "[resourceId('Microsoft.Network/applicationGateways', variables('applicationGatewayName'))]",
+		"applicationGatewaySubnetResourceId": "[concat(variables('virtualNetworkResourceId'), '/subnets/Application-Gateway-Subnet')]",
+		"backslash": "\\",
+		"clientDeploymentName": "[concat(variables('clientName'), '-Deployment')]",
+		"clientName": "[concat(variables('resourceNamePrefix'), 'Client-01')]",
+		"databaseServerDeploymentName": "[concat(variables('databaseServerName'), '-Deployment')]",
+		"databaseServerName": "[concat(variables('resourceNamePrefix'), 'DB-01')]",
+		"default1HtmlUrl": "[concat(variables('deploymentDirectoryUrl'), 'Default-1.html')]",
+		"default2HtmlUrl": "[concat(variables('deploymentDirectoryUrl'), 'Default-2.html')]",
+		"deploymentApiVersion": "[providers('Microsoft.Resources', 'deployments').apiVersions[0]]",
+		"deploymentDirectoryUrl": "[concat(substring(variables('deploymentUrl'), 0, indexOf(toLower(variables('deploymentUrl')), '/azure-deploy.json')), '/')]",
+		"deploymentMode": "Incremental",
+		"deploymentUrl": "[deployment().properties.templateLink.uri]",
+		"developmentDeploymentName": "[concat(variables('developmentName'), '-Deployment')]",
+		"developmentName": "[concat(variables('resourceNamePrefix'), 'Dev-01')]",
+		"diagnosticsStorageAccountDeploymentName": "Diagnostics-Storage-Account-Deployment",
+		"diagnosticsStorageAccountName": "[concat(variables('internalResourceNamePrefix'), 'diagnostics', substring(variables('internalResourceNameSuffix'), 0, 8))]",
+		"dnsServerForwarder": "168.63.129.16",
+		"dnsServerIp": "[concat(variables('ipAddressPrefix'), '0.10')]",
+		"domainAdministrator": "[concat(variables('domainShortName'), variables('backslash'), parameters('userName'))]",
+		"domainControllerDeploymentName": "[concat(variables('domainControllerName'), '-Deployment')]",
+		"domainControllerName": "[concat(variables('resourceNamePrefix'), 'DC-01')]",
+		"domainCredential": {
+			"Password": "[parameters('password')]",
+			"UserName": "[variables('domainAdministrator')]"
+		},
+		"domainName": "[toLower(parameters('domainName'))]",
+		"domainShortName": "[toUpper(first(split(variables('domainName'), '.')))]",
+		"dscModulesUrlFormat": "[concat(variables('deploymentDirectoryUrl'), 'DSC-Modules/{0}/Modules.zip')]",
+		"internalResourceNamePrefix": "[replace(replace(toLower(parameters('resourceNamePrefix')), '-', ''), '_', '')]",
+		"internalResourceNameSuffix": "[uniqueString(resourceGroup().id)]",
+		"ipAddressPrefix": "[concat(parameters('ipAddressFirstPart'), '.', parameters('ipAddressSecondPart'), '.')]",
+		"networkSecurityGroupDeploymentName": "[concat(variables('networkSecurityGroupName'), '-Deployment')]",
+		"networkSecurityGroupName": "[concat(variables('resourceNamePrefix'), 'Network-Security-Group')]",
+		"networkSecurityGroupResourceId": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroupName'))]",
+		"networkSecurityGroupTemplateLinkUrl": "[concat(variables('templateLinkDirectoryUrl'), 'Default-Network-Security-Group.json')]",
+		"repositoryUrl": "[concat(substring(variables('deploymentDirectoryUrl'), 0, indexOf(toLower(variables('deploymentDirectoryUrl')), '/templates/web-development-domain/')), '/')]",
+		"resourceNamePrefix": "[toUpper(parameters('resourceNamePrefix'))]",
+		"sharedDirectoryUrl": "[concat(variables('repositoryUrl'), 'Shared/')]",
+		"storageAccountDeploymentName": "Storage-Account-Deployment",
+		"storageAccountName": "[concat(variables('internalResourceNamePrefix'), 'storage', variables('internalResourceNameSuffix'))]",
+		"storageAccountTemplateLinkUrl": "[concat(variables('templateLinkDirectoryUrl'), 'Storage-Account.json')]",
+		"tags": {},
+		"tags-description": "A json-object parameter (keys and values) for tags for all resources in this deployment. Eg. { \"Cost-center\":, \"ABC-123\", \"Environment\": \"Production\" }",
+		"templateLinkContentVersion": "1.0.0.0",
+		"templateLinkDirectoryUrl": "[concat(variables('sharedDirectoryUrl'), 'Templates/')]",
+		"virtualNetworkDefaultSubnetResourceId": "[concat(variables('virtualNetworkResourceId'), '/subnets/Default-Subnet')]",
+		"virtualNetworkDeploymentName": "Virtual-Network-Deployment",
+		"virtualNetworkGatewayIpName": "[concat(variables('virtualNetworkGatewayName'), '-IP')]",
+		"virtualNetworkGatewayName": "[concat(variables('resourceNamePrefix'), 'Virtual-Network-Gateway')]",
+		"virtualNetworkGatewaySubnetResourceId": "[concat(variables('virtualNetworkResourceId'), '/subnets/GatewaySubnet')]",
+		"virtualNetworkName": "[concat(variables('resourceNamePrefix'), 'Virtual-Network')]",
+		"virtualNetworkResourceId": "[resourceId('Microsoft.Network/virtualNetworks', variables('virtualNetworkName'))]",
+		"virtualNetworkTemplateLinkUrl": "[concat(variables('templateLinkDirectoryUrl'), 'Default-Virtual-Network.json')]",
+		"virtualNetworkUpdateDeploymentName": "Virtual-Network-Update-Deployment",
+		"webConfigUrl": "[concat(variables('deploymentDirectoryUrl'), 'Web.config')]",
+		"webServer1DeploymentName": "[concat(variables('webServer1Name'), '-Deployment')]",
+		"webServer1Ip": "[concat(variables('ipAddressPrefix'), '0.31')]",
+		"webServer1Name": "[concat(variables('resourceNamePrefix'), 'Web-01')]",
+		"webServer2DeploymentName": "[concat(variables('webServer2Name'), '-Deployment')]",
+		"webServer2Ip": "[concat(variables('ipAddressPrefix'), '0.32')]",
+		"webServer2Name": "[concat(variables('resourceNamePrefix'), 'Web-02')]",
+		"webServerEntryName": "[concat(variables('resourceNamePrefix'), 'Web')]",
+		"webServerEntryIp": "[concat(variables('ipAddressPrefix'), '0.140')]",
+		"windows10EnterpriseTemplateLinkUrl": "[concat(variables('templateLinkDirectoryUrl'), 'Windows-10-Enterprise.json')]",
+		"windows10EnterpriseWithVisualStudioEnterprise2017TemplateLinkUrl": "[concat(variables('templateLinkDirectoryUrl'), 'Windows-10-Enterprise-With-Visual-Studio-Enterprise-2017.json')]",
+		"windowsServer2016WithSqlServerDeveloper2017TemplateLinkUrl": "[concat(variables('templateLinkDirectoryUrl'), 'Windows-Server-2016-With-SQL-Server-Developer-2017.json')]",
+		"windowsServer2016DatacenterTemplateLinkUrl": "[concat(variables('templateLinkDirectoryUrl'), 'Windows-Server-2016-Datacenter.json')]"
+	},
+	"resources": [
+		{
+			"name": "[variables('applicationGatewayInternalName')]",
+			"apiVersion": "[providers('Microsoft.Network', 'applicationGateways').apiVersions[0]]",
+			"dependsOn": [
+				"[variables('virtualNetworkUpdateDeploymentName')]"
+			],
+			"location": "[resourceGroup().location]",
+			"properties": {
+				"authenticationCertificates": [
+					{
+						"name": "Authentication-Certificate",
+						"properties": {
+							"data": "[parameters('applicationGatewayAuthenticationCertificatePublicKeyValue')]"
+						}
+					}
+				],
+				"backendAddressPools": [
+					{
+						"name": "Backend-Pool",
+						"properties": {
+							"backendAddresses": [
+								{
+									"ipAddress": "[variables('webServer1Ip')]"
+								},
+								{
+									"ipAddress": "[variables('webServer2Ip')]"
+								}
+							]
+						}
+					}
+				],
+				"backendHttpSettingsCollection": [
+					{
+						"name": "Backend-Http-Setting",
+						"properties": {
+							"port": 80,
+							"protocol": "Http"
+						}
+					},
+					{
+						"name": "Backend-Https-Setting",
+						"properties": {
+							"AuthenticationCertificates": [
+								{
+									"Id": "[concat(variables('applicationGatewayInternalResourceId'), '/authenticationCertificates/Authentication-Certificate')]"
+								}
+							],
+							"port": 443,
+							"protocol": "Https"
+						}
+					}
+				],
+				"frontendIPConfigurations": [
+					{
+						"name": "Frontend-IP-Configuration",
+						"properties": {
+							"privateIPAddress": "[variables('webServerEntryIp')]",
+							"privateIPAllocationMethod": "Static",
+							"subnet": {
+								"id": "[variables('applicationGatewaySubnetResourceId')]"
+							}
+						}
+					}
+				],
+				"frontendPorts": [
+					{
+						"name": "Frontend-Http-Port",
+						"properties": {
+							"port": 80
+						}
+					},
+					{
+						"name": "Frontend-Https-Port",
+						"properties": {
+							"port": 443
+						}
+					}
+				],
+				"gatewayIPConfigurations": [
+					{
+						"name": "Gateway-IP-Configuration",
+						"properties": {
+							"subnet": {
+								"id": "[variables('applicationGatewaySubnetResourceId')]"
+							}
+						}
+					}
+				],
+				"httpListeners": [
+					{
+						"name": "Http-Listener",
+						"properties": {
+							"frontendIPConfiguration": {
+								"Id": "[concat(variables('applicationGatewayInternalResourceId'), '/frontendIPConfigurations/Frontend-IP-Configuration')]"
+							},
+							"frontendPort": {
+								"Id": "[concat(variables('applicationGatewayInternalResourceId'), '/frontendPorts/Frontend-Http-Port')]"
+							},
+							"protocol": "Http"
+						}
+					},
+					{
+						"name": "Https-Listener",
+						"properties": {
+							"frontendIPConfiguration": {
+								"Id": "[concat(variables('applicationGatewayInternalResourceId'), '/frontendIPConfigurations/Frontend-IP-Configuration')]"
+							},
+							"frontendPort": {
+								"Id": "[concat(variables('applicationGatewayInternalResourceId'), '/frontendPorts/Frontend-Https-Port')]"
+							},
+							"protocol": "Https",
+							"sslCertificate": {
+								"Id": "[concat(variables('applicationGatewayInternalResourceId'), '/sslCertificates/SSL-Certificate')]"
+							}
+						}
+					}
+				],
+				"redirectConfigurations": [
+					{
+						"Name": "Http-Redirect-Configuration",
+						"properties": {
+							"redirectType": "Temporary",
+							"targetListener": {
+								"id": "[concat(variables('applicationGatewayInternalResourceId'), '/httpListeners/Https-Listener')]"
+							}
+						}
+					}
+				],
+				"requestRoutingRules": [
+					{
+						"Name": "Request-Routing-Http-Rule",
+						"properties": {
+							"httpListener": {
+								"id": "[concat(variables('applicationGatewayInternalResourceId'), '/httpListeners/Http-Listener')]"
+							},
+							"redirectConfiguration": {
+								"id": "[concat(variables('applicationGatewayInternalResourceId'), '/redirectConfigurations/Http-Redirect-Configuration')]"
+							},
+							"ruleType": "Basic"
+						}
+					},
+					{
+						"name": "Request-Routing-Https-Rule",
+						"properties": {
+							"backendAddressPool": {
+								"id": "[concat(variables('applicationGatewayInternalResourceId'), '/backendAddressPools/Backend-Pool')]"
+							},
+							"backendHttpSettings": {
+								"id": "[concat(variables('applicationGatewayInternalResourceId'), '/backendHttpSettingsCollection/Backend-Http-Setting')]"
+							},
+							"httpListener": {
+								"id": "[concat(variables('applicationGatewayInternalResourceId'), '/httpListeners/Https-Listener')]"
+							},
+							"ruleType": "Basic"
+						}
+					}
+				],
+				"sku": {
+					"capacity": 2,
+					"name": "Standard_Medium",
+					"tier": "Standard"
+				},
+				"sslCertificates": [
+					{
+						"name": "SSL-Certificate",
+						"properties": {
+							"data": "[parameters('applicationGatewaySslCertificateValue')]",
+							"password": "[parameters('password')]"
+						}
+					}
+				]
+			},
+			"tags": "[variables('tags')]",
+			"type": "Microsoft.Network/applicationGateways"
+		},
+		{
+			"name": "[variables('applicationGatewayIpName')]",
+			"apiVersion": "[providers('Microsoft.Network', 'publicIPAddresses').apiVersions[0]]",
+			"location": "[resourceGroup().location]",
+			"properties": {
+				"dnsSettings": {
+					"domainNameLabel": "[toLower(variables('applicationGatewayName'))]"
+				}
+			},
+			"tags": "[variables('tags')]",
+			"type": "Microsoft.Network/publicIPAddresses"
+		},
+		{
+			"name": "[variables('applicationGatewayName')]",
+			"apiVersion": "[providers('Microsoft.Network', 'applicationGateways').apiVersions[0]]",
+			"dependsOn": [
+				"[variables('applicationGatewayIpName')]",
+				"[variables('virtualNetworkUpdateDeploymentName')]"
+			],
+			"location": "[resourceGroup().location]",
+			"properties": {
+				"authenticationCertificates": [
+					{
+						"name": "Authentication-Certificate",
+						"properties": {
+							"data": "[parameters('applicationGatewayAuthenticationCertificatePublicKeyValue')]"
+						}
+					}
+				],
+				"backendAddressPools": [
+					{
+						"name": "Backend-Pool",
+						"properties": {
+							"backendAddresses": [
+								{
+									"ipAddress": "[variables('webServer1Ip')]"
+								},
+								{
+									"ipAddress": "[variables('webServer2Ip')]"
+								}
+							]
+						}
+					}
+				],
+				"backendHttpSettingsCollection": [
+					{
+						"name": "Backend-Http-Setting",
+						"properties": {
+							"port": 80,
+							"protocol": "Http"
+						}
+					},
+					{
+						"name": "Backend-Https-Setting",
+						"properties": {
+							"AuthenticationCertificates": [
+								{
+									"Id": "[concat(variables('applicationGatewayResourceId'), '/authenticationCertificates/Authentication-Certificate')]"
+								}
+							],
+							"port": 443,
+							"protocol": "Https"
+						}
+					}
+				],
+				"frontendIPConfigurations": [
+					{
+						"name": "Frontend-IP-Configuration",
+						"properties": {
+							"publicIPAddress": {
+								"id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('applicationGatewayIpName'))]"
+							}
+						}
+					}
+				],
+				"frontendPorts": [
+					{
+						"name": "Frontend-Http-Port",
+						"properties": {
+							"port": 80
+						}
+					},
+					{
+						"name": "Frontend-Https-Port",
+						"properties": {
+							"port": 443
+						}
+					}
+				],
+				"gatewayIPConfigurations": [
+					{
+						"name": "Gateway-IP-Configuration",
+						"properties": {
+							"subnet": {
+								"id": "[variables('applicationGatewaySubnetResourceId')]"
+							}
+						}
+					}
+				],
+				"httpListeners": [
+					{
+						"name": "Http-Listener",
+						"properties": {
+							"frontendIPConfiguration": {
+								"Id": "[concat(variables('applicationGatewayResourceId'), '/frontendIPConfigurations/Frontend-IP-Configuration')]"
+							},
+							"frontendPort": {
+								"Id": "[concat(variables('applicationGatewayResourceId'), '/frontendPorts/Frontend-Http-Port')]"
+							},
+							"protocol": "Http"
+						}
+					},
+					{
+						"name": "Https-Listener",
+						"properties": {
+							"frontendIPConfiguration": {
+								"Id": "[concat(variables('applicationGatewayResourceId'), '/frontendIPConfigurations/Frontend-IP-Configuration')]"
+							},
+							"frontendPort": {
+								"Id": "[concat(variables('applicationGatewayResourceId'), '/frontendPorts/Frontend-Https-Port')]"
+							},
+							"protocol": "Https",
+							"sslCertificate": {
+								"Id": "[concat(variables('applicationGatewayResourceId'), '/sslCertificates/SSL-Certificate')]"
+							}
+						}
+					}
+				],
+				"redirectConfigurations": [
+					{
+						"Name": "Http-Redirect-Configuration",
+						"properties": {
+							"redirectType": "Temporary",
+							"targetListener": {
+								"id": "[concat(variables('applicationGatewayResourceId'), '/httpListeners/Https-Listener')]"
+							}
+						}
+					}
+				],
+				"requestRoutingRules": [
+					{
+						"Name": "Request-Routing-Http-Rule",
+						"properties": {
+							"httpListener": {
+								"id": "[concat(variables('applicationGatewayResourceId'), '/httpListeners/Http-Listener')]"
+							},
+							"redirectConfiguration": {
+								"id": "[concat(variables('applicationGatewayResourceId'), '/redirectConfigurations/Http-Redirect-Configuration')]"
+							},
+							"ruleType": "Basic"
+						}
+					},
+					{
+						"name": "Request-Routing-Https-Rule",
+						"properties": {
+							"backendAddressPool": {
+								"id": "[concat(variables('applicationGatewayResourceId'), '/backendAddressPools/Backend-Pool')]"
+							},
+							"backendHttpSettings": {
+								"id": "[concat(variables('applicationGatewayResourceId'), '/backendHttpSettingsCollection/Backend-Http-Setting')]"
+							},
+							"httpListener": {
+								"id": "[concat(variables('applicationGatewayResourceId'), '/httpListeners/Https-Listener')]"
+							},
+							"ruleType": "Basic"
+						}
+					}
+				],
+				"sku": {
+					"capacity": 2,
+					"name": "Standard_Medium",
+					"tier": "Standard"
+				},
+				"sslCertificates": [
+					{
+						"name": "SSL-Certificate",
+						"properties": {
+							"data": "[parameters('applicationGatewaySslCertificateValue')]",
+							"password": "[parameters('password')]"
+						}
+					}
+				]
+			},
+			"tags": "[variables('tags')]",
+			"type": "Microsoft.Network/applicationGateways"
+		},
+		{
+			"name": "[variables('adfsDeploymentName')]",
+			"apiVersion": "[variables('deploymentApiVersion')]",
+			"dependsOn": [
+				"[variables('databaseServerDeploymentName')]"
+			],
+			"properties": {
+				"mode": "[variables('deploymentMode')]",
+				"parameters": {
+					"diagnosticsStorageAccountName": {
+						"value": "[variables('diagnosticsStorageAccountName')]"
+					},
+					"ipAddress": {
+						"value": "[variables('adfsIp')]"
+					},
+					"networkSecurityGroupResourceId": {
+						"value": "[variables('networkSecurityGroupResourceId')]"
+					},
+					"password": {
+						"value": "[parameters('password')]"
+					},
+					"storageAccountName": {
+						"value": "[variables('storageAccountName')]"
+					},
+					"tags": {
+						"value": "[variables('tags')]"
+					},
+					"templateLinkDirectoryUrl": {
+						"value": "[variables('templateLinkDirectoryUrl')]"
+					},
+					"userName": {
+						"value": "[parameters('userName')]"
+					},
+					"virtualMachineName": {
+						"value": "[variables('adfsName')]"
+					},
+					"virtualNetworkSubnetResourceId": {
+						"value": "[variables('virtualNetworkDefaultSubnetResourceId')]"
+					}
+				},
+				"templateLink": {
+					"contentVersion": "[variables('templateLinkContentVersion')]",
+					"uri": "[variables('windowsServer2016DatacenterTemplateLinkUrl')]"
+				}
+			},
+			"type": "Microsoft.Resources/deployments"
+		},
+		{
+			"name": "[concat(variables('adfsName'), '/DSC-Extension')]",
+			"apiVersion": "[providers('Microsoft.Compute', 'virtualMachines/extensions').apiVersions[0]]",
+			"dependsOn": [
+				"[variables('adfsDeploymentName')]"
+			],
+			"location": "[resourceGroup().location]",
+			"properties": {
+				"autoUpgradeMinorVersion": "true",
+				"protectedSettings": {
+					"configurationArguments": {
+						"Credential": "[variables('domainCredential')]",
+						"ServiceAccount": "[concat(variables('domainShortName'), variables('backslash'), 'ADFS-Service')]"
+					}
+				},
+				"publisher": "Microsoft.Powershell",
+				"settings": {
+					"configuration": {
+						"function": "AdfsConfiguration",
+						"script": "Configuration.ps1",
+						"url": "[replace(variables('dscModulesUrlFormat'), '{0}', 'ADFS')]"
+					},
+					"configurationArguments": {
+						"DatabaseServerName": "[variables('databaseServerName')]",
+						"DomainControllerName": "[variables('domainControllerName')]",
+						"DomainName": "[variables('domainName')]"
+					},
+					"wmfVersion": "latest"
+				},
+				"type": "DSC",
+				"typeHandlerVersion": "2.0"
+			},
+			"type": "Microsoft.Compute/virtualMachines/extensions"
+		},
+		{
+			"name": "[variables('clientDeploymentName')]",
+			"apiVersion": "[variables('deploymentApiVersion')]",
+			"dependsOn": [
+				"[variables('virtualNetworkUpdateDeploymentName')]"
+			],
+			"properties": {
+				"mode": "[variables('deploymentMode')]",
+				"parameters": {
+					"availability": {
+						"value": "Public-And-Public-With-443-To-3389-Redirect"
+					},
+					"diagnosticsStorageAccountName": {
+						"value": "[variables('diagnosticsStorageAccountName')]"
+					},
+					"ipAddress": {
+						"value": "[concat(variables('ipAddressPrefix'), '0.100')]"
+					},
+					"networkSecurityGroupResourceId": {
+						"value": "[variables('networkSecurityGroupResourceId')]"
+					},
+					"password": {
+						"value": "[parameters('password')]"
+					},
+					"storageAccountName": {
+						"value": "[variables('storageAccountName')]"
+					},
+					"tags": {
+						"value": "[variables('tags')]"
+					},
+					"templateLinkDirectoryUrl": {
+						"value": "[variables('templateLinkDirectoryUrl')]"
+					},
+					"userName": {
+						"value": "[parameters('userName')]"
+					},
+					"virtualMachineName": {
+						"value": "[variables('clientName')]"
+					},
+					"virtualNetworkSubnetResourceId": {
+						"value": "[variables('virtualNetworkDefaultSubnetResourceId')]"
+					}
+				},
+				"templateLink": {
+					"contentVersion": "[variables('templateLinkContentVersion')]",
+					"uri": "[variables('windows10EnterpriseTemplateLinkUrl')]"
+				}
+			},
+			"type": "Microsoft.Resources/deployments"
+		},
+		{
+			"name": "[concat(variables('clientName'), '/Domain-Computer-Extension')]",
+			"apiVersion": "[providers('Microsoft.Compute', 'virtualMachines/extensions').apiVersions[0]]",
+			"dependsOn": [
+				"[variables('clientDeploymentName')]"
+			],
+			"location": "[resourceGroup().location]",
+			"properties": {
+				"autoUpgradeMinorVersion": true,
+				"protectedSettings": {
+					"Password": "[parameters('password')]"
+				},
+				"publisher": "Microsoft.Compute",
+				"settings": {
+					"Name": "[variables('domainName')]",
+					"Options": "3",
+					"Restart": "true",
+					"User": "[variables('domainAdministrator')]"
+				},
+				"type": "JsonADDomainExtension",
+				"typeHandlerVersion": "1.0"
+			},
+			"type": "Microsoft.Compute/virtualMachines/extensions"
+		},
+		{
+			"name": "[concat(variables('clientName'), '/DSC-Extension')]",
+			"apiVersion": "[providers('Microsoft.Compute', 'virtualMachines/extensions').apiVersions[0]]",
+			"dependsOn": [
+				"[resourceId('Microsoft.Compute/virtualMachines/extensions', variables('clientName'), 'Domain-Computer-Extension')]"
+			],
+			"location": "[resourceGroup().location]",
+			"properties": {
+				"autoUpgradeMinorVersion": "true",
+				"protectedSettings": {
+					"configurationArguments": {
+						"Credential": "[variables('domainCredential')]"
+					}
+				},
+				"publisher": "Microsoft.Powershell",
+				"settings": {
+					"configuration": {
+						"function": "DomainComputerConfiguration",
+						"script": "Configuration.ps1",
+						"url": "[replace(variables('dscModulesUrlFormat'), '{0}', 'Domain-Computer')]"
+					},
+					"configurationArguments": {
+						"DomainControllerName": "[variables('domainControllerName')]",
+						"DomainName": "[variables('domainName')]"
+					},
+					"wmfVersion": "latest"
+				},
+				"type": "DSC",
+				"typeHandlerVersion": "2.0"
+			},
+			"type": "Microsoft.Compute/virtualMachines/extensions"
+		},
+		{
+			"name": "[variables('databaseServerDeploymentName')]",
+			"apiVersion": "[variables('deploymentApiVersion')]",
+			"dependsOn": [
+				"[variables('virtualNetworkUpdateDeploymentName')]"
+			],
+			"properties": {
+				"mode": "[variables('deploymentMode')]",
+				"parameters": {
+					"diagnosticsStorageAccountName": {
+						"value": "[variables('diagnosticsStorageAccountName')]"
+					},
+					"ipAddress": {
+						"value": "[concat(variables('ipAddressPrefix'), '0.60')]"
+					},
+					"networkSecurityGroupResourceId": {
+						"value": "[variables('networkSecurityGroupResourceId')]"
+					},
+					"password": {
+						"value": "[parameters('password')]"
+					},
+					"storageAccountName": {
+						"value": "[variables('storageAccountName')]"
+					},
+					"tags": {
+						"value": "[variables('tags')]"
+					},
+					"templateLinkDirectoryUrl": {
+						"value": "[variables('templateLinkDirectoryUrl')]"
+					},
+					"userName": {
+						"value": "[parameters('userName')]"
+					},
+					"virtualMachineName": {
+						"value": "[variables('databaseServerName')]"
+					},
+					"virtualNetworkSubnetResourceId": {
+						"value": "[variables('virtualNetworkDefaultSubnetResourceId')]"
+					}
+				},
+				"templateLink": {
+					"contentVersion": "[variables('templateLinkContentVersion')]",
+					"uri": "[variables('windowsServer2016WithSqlServerDeveloper2017TemplateLinkUrl')]"
+				}
+			},
+			"type": "Microsoft.Resources/deployments"
+		},
+		{
+			"name": "[concat(variables('databaseServerName'), '/DSC-Extension')]",
+			"apiVersion": "[providers('Microsoft.Compute', 'virtualMachines/extensions').apiVersions[0]]",
+			"dependsOn": [
+				"[variables('databaseServerDeploymentName')]"
+			],
+			"location": "[resourceGroup().location]",
+			"properties": {
+				"autoUpgradeMinorVersion": "true",
+				"protectedSettings": {
+					"configurationArguments": {
+						"Credential": "[variables('domainCredential')]"
+					}
+				},
+				"publisher": "Microsoft.Powershell",
+				"settings": {
+					"configuration": {
+						"function": "DatabaseServerConfiguration",
+						"script": "Configuration.ps1",
+						"url": "[replace(variables('dscModulesUrlFormat'), '{0}', 'Database-Server')]"
+					},
+					"configurationArguments": {
+						"DomainControllerName": "[variables('domainControllerName')]",
+						"DomainName": "[variables('domainName')]"
+					},
+					"wmfVersion": "latest"
+				},
+				"type": "DSC",
+				"typeHandlerVersion": "2.0"
+			},
+			"type": "Microsoft.Compute/virtualMachines/extensions"
+		},
+		{
+			"name": "[variables('developmentDeploymentName')]",
+			"apiVersion": "[variables('deploymentApiVersion')]",
+			"dependsOn": [
+				"[variables('virtualNetworkUpdateDeploymentName')]"
+			],
+			"properties": {
+				"mode": "[variables('deploymentMode')]",
+				"parameters": {
+					"diagnosticsStorageAccountName": {
+						"value": "[variables('diagnosticsStorageAccountName')]"
+					},
+					"ipAddress": {
+						"value": "[concat(variables('ipAddressPrefix'), '0.80')]"
+					},
+					"networkSecurityGroupResourceId": {
+						"value": "[variables('networkSecurityGroupResourceId')]"
+					},
+					"password": {
+						"value": "[parameters('password')]"
+					},
+					"storageAccountName": {
+						"value": "[variables('storageAccountName')]"
+					},
+					"tags": {
+						"value": "[variables('tags')]"
+					},
+					"templateLinkDirectoryUrl": {
+						"value": "[variables('templateLinkDirectoryUrl')]"
+					},
+					"userName": {
+						"value": "[parameters('userName')]"
+					},
+					"virtualMachineName": {
+						"value": "[variables('developmentName')]"
+					},
+					"virtualNetworkSubnetResourceId": {
+						"value": "[variables('virtualNetworkDefaultSubnetResourceId')]"
+					}
+				},
+				"templateLink": {
+					"contentVersion": "[variables('templateLinkContentVersion')]",
+					"uri": "[variables('windows10EnterpriseWithVisualStudioEnterprise2017TemplateLinkUrl')]"
+				}
+			},
+			"type": "Microsoft.Resources/deployments"
+		},
+		{
+			"name": "[concat(variables('developmentName'), '/Domain-Computer-Extension')]",
+			"apiVersion": "[providers('Microsoft.Compute', 'virtualMachines/extensions').apiVersions[0]]",
+			"dependsOn": [
+				"[variables('developmentDeploymentName')]"
+			],
+			"location": "[resourceGroup().location]",
+			"properties": {
+				"autoUpgradeMinorVersion": true,
+				"protectedSettings": {
+					"Password": "[parameters('password')]"
+				},
+				"publisher": "Microsoft.Compute",
+				"settings": {
+					"Name": "[variables('domainName')]",
+					"Options": "3",
+					"Restart": "true",
+					"User": "[variables('domainAdministrator')]"
+				},
+				"type": "JsonADDomainExtension",
+				"typeHandlerVersion": "1.0"
+			},
+			"type": "Microsoft.Compute/virtualMachines/extensions"
+		},
+		{
+			"name": "[concat(variables('developmentName'), '/DSC-Extension')]",
+			"apiVersion": "[providers('Microsoft.Compute', 'virtualMachines/extensions').apiVersions[0]]",
+			"dependsOn": [
+				"[resourceId('Microsoft.Compute/virtualMachines/extensions', variables('developmentName'), 'Domain-Computer-Extension')]"
+			],
+			"location": "[resourceGroup().location]",
+			"properties": {
+				"autoUpgradeMinorVersion": "true",
+				"protectedSettings": {
+					"configurationArguments": {
+						"Credential": "[variables('domainCredential')]"
+					}
+				},
+				"publisher": "Microsoft.Powershell",
+				"settings": {
+					"configuration": {
+						"function": "DomainComputerConfiguration",
+						"script": "Configuration.ps1",
+						"url": "[replace(variables('dscModulesUrlFormat'), '{0}', 'Domain-Computer')]"
+					},
+					"configurationArguments": {
+						"DomainControllerName": "[variables('domainControllerName')]",
+						"DomainName": "[variables('domainName')]"
+					},
+					"wmfVersion": "latest"
+				},
+				"type": "DSC",
+				"typeHandlerVersion": "2.0"
+			},
+			"type": "Microsoft.Compute/virtualMachines/extensions"
+		},
+		{
+			"name": "[variables('diagnosticsStorageAccountDeploymentName')]",
+			"apiVersion": "[variables('deploymentApiVersion')]",
+			"properties": {
+				"mode": "[variables('deploymentMode')]",
+				"parameters": {
+					"storageAccountName": {
+						"value": "[variables('diagnosticsStorageAccountName')]"
+					},
+					"tags": {
+						"value": "[variables('tags')]"
+					}
+				},
+				"templateLink": {
+					"contentVersion": "[variables('templateLinkContentVersion')]",
+					"uri": "[variables('storageAccountTemplateLinkUrl')]"
+				}
+			},
+			"type": "Microsoft.Resources/deployments"
+		},
+		{
+			"name": "[variables('domainControllerDeploymentName')]",
+			"apiVersion": "[variables('deploymentApiVersion')]",
+			"dependsOn": [
+				"[variables('virtualNetworkDeploymentName')]"
+			],
+			"properties": {
+				"mode": "[variables('deploymentMode')]",
+				"parameters": {
+					"diagnosticsStorageAccountName": {
+						"value": "[variables('diagnosticsStorageAccountName')]"
+					},
+					"ipAddress": {
+						"value": "[variables('dnsServerIp')]"
+					},
+					"networkSecurityGroupResourceId": {
+						"value": "[variables('networkSecurityGroupResourceId')]"
+					},
+					"password": {
+						"value": "[parameters('password')]"
+					},
+					"storageAccountName": {
+						"value": "[variables('storageAccountName')]"
+					},
+					"tags": {
+						"value": "[variables('tags')]"
+					},
+					"templateLinkDirectoryUrl": {
+						"value": "[variables('templateLinkDirectoryUrl')]"
+					},
+					"userName": {
+						"value": "[parameters('userName')]"
+					},
+					"virtualMachineName": {
+						"value": "[variables('domainControllerName')]"
+					},
+					"virtualNetworkSubnetResourceId": {
+						"value": "[variables('virtualNetworkDefaultSubnetResourceId')]"
+					}
+				},
+				"templateLink": {
+					"contentVersion": "[variables('templateLinkContentVersion')]",
+					"uri": "[variables('windowsServer2016DatacenterTemplateLinkUrl')]"
+				}
+			},
+			"type": "Microsoft.Resources/deployments"
+		},
+		{
+			"name": "[concat(variables('domainControllerName'), '/DSC-Extension')]",
+			"apiVersion": "[providers('Microsoft.Compute', 'virtualMachines/extensions').apiVersions[0]]",
+			"dependsOn": [
+				"[variables('domainControllerDeploymentName')]"
+			],
+			"location": "[resourceGroup().location]",
+			"properties": {
+				"autoUpgradeMinorVersion": "true",
+				"protectedSettings": {
+					"configurationArguments": {
+						"ApplicationGatewayAuthenticationCertificateValue": "[parameters('applicationGatewayAuthenticationCertificateValue')]",
+						"ApplicationGatewaySslCertificateValue": "[parameters('applicationGatewaySslCertificateValue')]",
+						"Credential": "[variables('domainCredential')]",
+						"ServiceAccounts": [
+							{
+								"Description": "Service-account used by ADFS.",
+								"Name": "ADFS-Service",
+								"ServicePrincipalNames": [
+									"HOST/adfs",
+									"[concat('HOST/adfs.', variables('domainName'))]"
+								]
+							},
+							{
+								"Description": "Service-account used by IIS application-pool.",
+								"Name": "[concat(variables('webServerEntryName'), '-Service')]",
+								"ServicePrincipalNames": [
+									"[concat('HOST/', toLower(variables('webServerEntryName')))]",
+									"[concat('HOST/', toLower(variables('webServerEntryName')), '.', variables('domainName'))]"
+								]
+							}
+						]
+					}
+				},
+				"publisher": "Microsoft.Powershell",
+				"settings": {
+					"configuration": {
+						"function": "DomainControllerConfiguration",
+						"script": "Configuration.ps1",
+						"url": "[replace(variables('dscModulesUrlFormat'), '{0}', 'Domain-Controller')]"
+					},
+					"configurationArguments": {
+						"AdfsCertificateTemplateNames": "[variables('adfsCertificateTemplateNames')]",
+						"DnsRecords": [
+							{
+								"IpAddress": "[variables('adfsIp')]",
+								"Name": "[variables('adfsAlias')]"
+							},
+							{
+								"IpAddress": "[variables('webServerEntryIp')]",
+								"Name": "[variables('webServerEntryName')]"
+							}
+						],
+						"DnsServerForwarderIpAddress": "[variables('dnsServerForwarder')]",
+						"DnsServerIpAddress": "127.0.0.1",
+						"DomainName": "[variables('domainName')]",
+						"IpAddress": "[variables('dnsServerIp')]"
+					},
+					"wmfVersion": "latest"
+				},
+				"type": "DSC",
+				"typeHandlerVersion": "2.0"
+			},
+			"type": "Microsoft.Compute/virtualMachines/extensions"
+		},
+		{
+			"name": "[variables('networkSecurityGroupDeploymentName')]",
+			"apiVersion": "[variables('deploymentApiVersion')]",
+			"dependsOn": [
+				"[variables('diagnosticsStorageAccountDeploymentName')]",
+				"[variables('storageAccountDeploymentName')]"
+			],
+			"properties": {
+				"mode": "[variables('deploymentMode')]",
+				"parameters": {
+					"networkSecurityGroupName": {
+						"value": "[variables('networkSecurityGroupName')]"
+					},
+					"tags": {
+						"value": "[variables('tags')]"
+					}
+				},
+				"templateLink": {
+					"contentVersion": "[variables('templateLinkContentVersion')]",
+					"uri": "[variables('networkSecurityGroupTemplateLinkUrl')]"
+				}
+			},
+			"type": "Microsoft.Resources/deployments"
+		},
+		{
+			"name": "[variables('storageAccountDeploymentName')]",
+			"apiVersion": "[variables('deploymentApiVersion')]",
+			"properties": {
+				"mode": "[variables('deploymentMode')]",
+				"parameters": {
+					"storageAccountName": {
+						"value": "[variables('storageAccountName')]"
+					},
+					"tags": {
+						"value": "[variables('tags')]"
+					}
+				},
+				"templateLink": {
+					"contentVersion": "[variables('templateLinkContentVersion')]",
+					"uri": "[variables('storageAccountTemplateLinkUrl')]"
+				}
+			},
+			"type": "Microsoft.Resources/deployments"
+		},
+		{
+			"name": "[variables('webServer1DeploymentName')]",
+			"apiVersion": "[variables('deploymentApiVersion')]",
+			"dependsOn": [
+				"[variables('virtualNetworkUpdateDeploymentName')]"
+			],
+			"properties": {
+				"mode": "[variables('deploymentMode')]",
+				"parameters": {
+					"diagnosticsStorageAccountName": {
+						"value": "[variables('diagnosticsStorageAccountName')]"
+					},
+					"ipAddress": {
+						"value": "[variables('webServer1Ip')]"
+					},
+					"networkSecurityGroupResourceId": {
+						"value": "[variables('networkSecurityGroupResourceId')]"
+					},
+					"password": {
+						"value": "[parameters('password')]"
+					},
+					"storageAccountName": {
+						"value": "[variables('storageAccountName')]"
+					},
+					"tags": {
+						"value": "[variables('tags')]"
+					},
+					"templateLinkDirectoryUrl": {
+						"value": "[variables('templateLinkDirectoryUrl')]"
+					},
+					"userName": {
+						"value": "[parameters('userName')]"
+					},
+					"virtualMachineName": {
+						"value": "[variables('webServer1Name')]"
+					},
+					"virtualNetworkSubnetResourceId": {
+						"value": "[variables('virtualNetworkDefaultSubnetResourceId')]"
+					}
+				},
+				"templateLink": {
+					"contentVersion": "[variables('templateLinkContentVersion')]",
+					"uri": "[variables('windowsServer2016DatacenterTemplateLinkUrl')]"
+				}
+			},
+			"type": "Microsoft.Resources/deployments"
+		},
+		{
+			"name": "[concat(variables('webServer1Name'), '/DSC-Extension')]",
+			"apiVersion": "[providers('Microsoft.Compute', 'virtualMachines/extensions').apiVersions[0]]",
+			"dependsOn": [
+				"[variables('webServer1DeploymentName')]"
+			],
+			"location": "[resourceGroup().location]",
+			"properties": {
+				"autoUpgradeMinorVersion": "true",
+				"protectedSettings": {
+					"configurationArguments": {
+						"Credential": "[variables('domainCredential')]"
+					}
+				},
+				"publisher": "Microsoft.Powershell",
+				"settings": {
+					"configuration": {
+						"function": "WebServerConfiguration",
+						"script": "Configuration.ps1",
+						"url": "[replace(variables('dscModulesUrlFormat'), '{0}', 'Web-Server')]"
+					},
+					"configurationArguments": {
+						"DefaultHtmlUrl": "[variables('default1HtmlUrl')]",
+						"DomainControllerName": "[variables('domainControllerName')]",
+						"DomainName": "[variables('domainName')]",
+						"WebConfigUrl": "[variables('webConfigUrl')]"
+					},
+					"wmfVersion": "latest"
+				},
+				"type": "DSC",
+				"typeHandlerVersion": "2.0"
+			},
+			"type": "Microsoft.Compute/virtualMachines/extensions"
+		},
+		{
+			"name": "[variables('webServer2DeploymentName')]",
+			"apiVersion": "[variables('deploymentApiVersion')]",
+			"dependsOn": [
+				"[variables('virtualNetworkUpdateDeploymentName')]"
+			],
+			"properties": {
+				"mode": "[variables('deploymentMode')]",
+				"parameters": {
+					"diagnosticsStorageAccountName": {
+						"value": "[variables('diagnosticsStorageAccountName')]"
+					},
+					"ipAddress": {
+						"value": "[variables('webServer2Ip')]"
+					},
+					"networkSecurityGroupResourceId": {
+						"value": "[variables('networkSecurityGroupResourceId')]"
+					},
+					"password": {
+						"value": "[parameters('password')]"
+					},
+					"storageAccountName": {
+						"value": "[variables('storageAccountName')]"
+					},
+					"tags": {
+						"value": "[variables('tags')]"
+					},
+					"templateLinkDirectoryUrl": {
+						"value": "[variables('templateLinkDirectoryUrl')]"
+					},
+					"userName": {
+						"value": "[parameters('userName')]"
+					},
+					"virtualMachineName": {
+						"value": "[variables('webServer2Name')]"
+					},
+					"virtualNetworkSubnetResourceId": {
+						"value": "[variables('virtualNetworkDefaultSubnetResourceId')]"
+					}
+				},
+				"templateLink": {
+					"contentVersion": "[variables('templateLinkContentVersion')]",
+					"uri": "[variables('windowsServer2016DatacenterTemplateLinkUrl')]"
+				}
+			},
+			"type": "Microsoft.Resources/deployments"
+		},
+		{
+			"name": "[concat(variables('webServer2Name'), '/DSC-Extension')]",
+			"apiVersion": "[providers('Microsoft.Compute', 'virtualMachines/extensions').apiVersions[0]]",
+			"dependsOn": [
+				"[variables('webServer2DeploymentName')]"
+			],
+			"location": "[resourceGroup().location]",
+			"properties": {
+				"autoUpgradeMinorVersion": "true",
+				"protectedSettings": {
+					"configurationArguments": {
+						"Credential": "[variables('domainCredential')]"
+					}
+				},
+				"publisher": "Microsoft.Powershell",
+				"settings": {
+					"configuration": {
+						"function": "WebServerConfiguration",
+						"script": "Configuration.ps1",
+						"url": "[replace(variables('dscModulesUrlFormat'), '{0}', 'Web-Server')]"
+					},
+					"configurationArguments": {
+						"DefaultHtmlUrl": "[variables('default2HtmlUrl')]",
+						"DomainControllerName": "[variables('domainControllerName')]",
+						"DomainName": "[variables('domainName')]",
+						"WebConfigUrl": "[variables('webConfigUrl')]"
+					},
+					"wmfVersion": "latest"
+				},
+				"type": "DSC",
+				"typeHandlerVersion": "2.0"
+			},
+			"type": "Microsoft.Compute/virtualMachines/extensions"
+		},
+		{
+			"name": "[variables('virtualNetworkDeploymentName')]",
+			"apiVersion": "[variables('deploymentApiVersion')]",
+			"dependsOn": [
+				"[variables('networkSecurityGroupDeploymentName')]"
+			],
+			"properties": {
+				"mode": "[variables('deploymentMode')]",
+				"parameters": {
+					"ipAddressFirstPart": {
+						"value": "[parameters('ipAddressFirstPart')]"
+					},
+					"ipAddressSecondPart": {
+						"value": "[parameters('ipAddressSecondPart')]"
+					},
+					"tags": {
+						"value": "[variables('tags')]"
+					},
+					"virtualNetworkName": {
+						"value": "[variables('virtualNetworkName')]"
+					}
+				},
+				"templateLink": {
+					"contentVersion": "[variables('templateLinkContentVersion')]",
+					"uri": "[variables('virtualNetworkTemplateLinkUrl')]"
+				}
+			},
+			"type": "Microsoft.Resources/deployments"
+		},
+		{
+			"name": "[variables('virtualNetworkGatewayIpName')]",
+			"apiVersion": "[providers('Microsoft.Network', 'publicIPAddresses').apiVersions[0]]",
+			"location": "[resourceGroup().location]",
+			"properties": {
+				"dnsSettings": {
+					"domainNameLabel": "[toLower(variables('virtualNetworkGatewayName'))]"
+				}
+			},
+			"tags": "[variables('tags')]",
+			"type": "Microsoft.Network/publicIPAddresses"
+		},
+		{
+			"name": "[variables('virtualNetworkGatewayName')]",
+			"apiVersion": "[providers('Microsoft.Network', 'virtualNetworkGateways').apiVersions[0]]",
+			"dependsOn": [
+				"[variables('virtualNetworkDeploymentName')]",
+				"[variables('virtualNetworkGatewayIpName')]"
+			],
+			"location": "[resourceGroup().location]",
+			"properties": {
+				"gatewayType": "Vpn",
+				"ipConfigurations": [
+					{
+						"name": "[concat(variables('virtualNetworkGatewayName'), '-Configuration')]",
+						"properties": {
+							"publicIPAddress": {
+								"id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('virtualNetworkGatewayIpName'))]"
+							},
+							"subnet": {
+								"id": "[variables('virtualNetworkGatewaySubnetResourceId')]"
+							}
+						}
+					}
+				],
+				"vpnClientConfiguration": {
+					"vpnClientAddressPool": {
+						"addressPrefixes": [
+							"172.16.201.0/24"
+						]
+					},
+					"vpnClientRootCertificates": [
+						{
+							"name": "[concat(variables('virtualNetworkGatewayName'), '-Certificate')]",
+							"properties": {
+								"publicCertData": "[parameters('virtualNetworkGatewayCertificateValue')]"
+							}
+						}
+					]
+				},
+				"vpnType": "RouteBased"
+			},
+			"tags": "[variables('tags')]",
+			"type": "Microsoft.Network/virtualNetworkGateways"
+		},
+		{
+			"name": "[variables('virtualNetworkUpdateDeploymentName')]",
+			"apiVersion": "[variables('deploymentApiVersion')]",
+			"dependsOn": [
+				"[resourceId('Microsoft.Compute/virtualMachines/extensions', variables('domainControllerName'), 'DSC-Extension')]"
+			],
+			"properties": {
+				"mode": "[variables('deploymentMode')]",
+				"parameters": {
+					"dnsServers": {
+						"value": [ "[variables('dnsServerIp')]" ]
+					},
+					"ipAddressFirstPart": {
+						"value": "[parameters('ipAddressFirstPart')]"
+					},
+					"ipAddressSecondPart": {
+						"value": "[parameters('ipAddressSecondPart')]"
+					},
+					"tags": {
+						"value": "[variables('tags')]"
+					},
+					"virtualNetworkName": {
+						"value": "[variables('virtualNetworkName')]"
+					}
+				},
+				"templateLink": {
+					"contentVersion": "[variables('templateLinkContentVersion')]",
+					"uri": "[variables('virtualNetworkTemplateLinkUrl')]"
+				}
+			},
+			"type": "Microsoft.Resources/deployments"
+		}
+	]
+}

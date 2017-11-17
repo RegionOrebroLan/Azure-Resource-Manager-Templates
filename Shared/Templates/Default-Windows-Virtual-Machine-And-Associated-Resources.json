@@ -1,0 +1,303 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"availability": {
+			"allowedValues": [
+				"None",
+				"Public",
+				"Public-With-443-To-3389-Redirect",
+				"Public-And-Public-With-443-To-3389-Redirect"
+			],
+			"defaultValue": "None",
+			"metadata": {
+				"description": "The availability for the virtual-machine."
+			},
+			"type": "string"
+		},
+		"diagnosticsStorageAccountName": {
+			"metadata": {
+				"description": "The name of the diagnostics-storage-account."
+			},
+			"type": "string"
+		},
+		"ipAddress": {
+			"metadata": {
+				"description": "The ip-address of the virtual-machine."
+			},
+			"type": "string"
+		},
+		"networkSecurityGroupResourceId": {
+			"metadata": {
+				"description": "The resource-id of the network-security-group."
+			},
+			"type": "string"
+		},
+		"storageAccountName": {
+			"metadata": {
+				"description": "The name of the storage-account."
+			},
+			"type": "string"
+		},
+		"tags": {
+			"defaultValue": {},
+			"metadata": {
+				"description": "A json-object parameter (keys and values) for tags for all resources in this deployment. Eg. { \"Cost-center\":, \"ABC-123\", \"Environment\": \"Production\" }"
+			},
+			"type": "object"
+		},
+		"templateLinkDirectoryUrl": {
+			"metadata": {
+				"description": "Url to the shared templates directory."
+			},
+			"type": "string"
+		},
+		"virtualMachineHardwarProfileSize": {
+			"allowedValues": [
+				"Basic_A0",
+				"Basic_A1",
+				"Basic_A2",
+				"Basic_A3",
+				"Basic_A4",
+				"Standard_A0",
+				"Standard_A1",
+				"Standard_A10",
+				"Standard_A11",
+				"Standard_A2",
+				"Standard_A3",
+				"Standard_A4",
+				"Standard_A5",
+				"Standard_A6",
+				"Standard_A7",
+				"Standard_A8",
+				"Standard_A9",
+				"Standard_D1",
+				"Standard_D1_v2",
+				"Standard_D11",
+				"Standard_D11_v2",
+				"Standard_D12",
+				"Standard_D12_v2",
+				"Standard_D13",
+				"Standard_D13_v2",
+				"Standard_D14",
+				"Standard_D14_v2",
+				"Standard_D15_v2",
+				"Standard_D2",
+				"Standard_D2_v2",
+				"Standard_D3",
+				"Standard_D3_v2",
+				"Standard_D4",
+				"Standard_D4_v2",
+				"Standard_D5_v2",
+				"Standard_DS1",
+				"Standard_DS1_v2",
+				"Standard_DS11",
+				"Standard_DS11_v2",
+				"Standard_DS12",
+				"Standard_DS12_v2",
+				"Standard_DS13",
+				"Standard_DS13_v2",
+				"Standard_DS14",
+				"Standard_DS14_v2",
+				"Standard_DS15_v2",
+				"Standard_DS2",
+				"Standard_DS2_v2",
+				"Standard_DS3",
+				"Standard_DS3_v2",
+				"Standard_DS4",
+				"Standard_DS4_v2",
+				"Standard_DS5_v2",
+				"Standard_G1",
+				"Standard_G2",
+				"Standard_G3",
+				"Standard_G4",
+				"Standard_G5",
+				"Standard_GS1",
+				"Standard_GS2",
+				"Standard_GS3",
+				"Standard_GS4",
+				"Standard_GS5"
+			],
+			"defaultValue": "Standard_DS2_v2",
+			"metadata": {
+				"description": "The hardware-profile-size of the virtual-machine."
+			},
+			"type": "string"
+		},
+		"virtualMachineImageOffer": {
+			"metadata": {
+				"description": "The image-offer of the virtual-machine."
+			},
+			"type": "string"
+		},
+		"virtualMachineImagePublisher": {
+			"metadata": {
+				"description": "The image-publisher of the virtual-machine."
+			},
+			"type": "string"
+		},
+		"virtualMachineImageSku": {
+			"metadata": {
+				"description": "The image-sku of the virtual-machine."
+			},
+			"type": "string"
+		},
+		"virtualMachineName": {
+			"metadata": {
+				"description": "The name of the virtual-machine."
+			},
+			"type": "string"
+		},
+		"virtualMachinePassword": {
+			"defaultValue": "",
+			"metadata": {
+				"description": "The password for the virtual-machine."
+			},
+			"type": "securestring"
+		},
+		"virtualMachinePlan": {
+			"defaultValue": {},
+			"metadata": {
+				"description": "A json-object parameter for the virtual-machine plan."
+			},
+			"type": "object"
+		},
+		"virtualMachineUserName": {
+			"defaultValue": "",
+			"metadata": {
+				"description": "The user-name for the virtual-machine."
+			},
+			"type": "securestring"
+		},
+		"virtualNetworkSubnetResourceId": {
+			"metadata": {
+				"description": "The resource-id of the virtual-network-subnet."
+			},
+			"type": "string"
+		}
+	},
+	"variables": {
+		"_help": [
+			{
+				"Note": "The virtual-machine deployment also have the 'plan' property to be set to parameters('virtualMachinePlan') that has a default-value of {}. But that does not work, gives errors. Do not yet know how to do it."
+			}
+		],
+		"deploymentApiVersion": "[providers('Microsoft.Resources', 'deployments').apiVersions[0]]",
+		"deploymentMode": "Incremental",
+		"loadBalancerDeploymentName": "[concat(parameters('virtualMachineName'), '-Load-Balancer-Deployment')]",
+		"loadBalancerPublicAvailabilityReplacementValue": "Public-With-443-To-3389-Redirect",
+		"loadBalancerTemplateLinkUrl": "[concat(parameters('templateLinkDirectoryUrl'), 'Load-Balancer-Availability-', replace(replace(replace(parameters('availability'), 'Public', 'None'), 'None-And-None-With-443-To-3389-Redirect', variables('loadBalancerPublicAvailabilityReplacementValue')), 'None-With-443-To-3389-Redirect', variables('loadBalancerPublicAvailabilityReplacementValue')), '.json')]",
+		"networkInterfaceDeploymentName": "[concat(variables('networkInterfaceName'), '-Deployment')]",
+		"networkInterfaceName": "[concat(parameters('virtualMachineName'), '-Network-Interface')]",
+		"networkInterfaceTemplateLinkUrl": "[concat(parameters('templateLinkDirectoryUrl'), 'Network-Interface-Availability-', parameters('availability'), '.json')]",
+		"templateLinkContentVersion": "1.0.0.0"
+	},
+	"resources": [
+		{
+			"name": "[variables('loadBalancerDeploymentName')]",
+			"apiVersion": "[variables('deploymentApiVersion')]",
+			"properties": {
+				"mode": "[variables('deploymentMode')]",
+				"parameters": {
+					"tags": {
+						"value": "[parameters('tags')]"
+					},
+					"virtualMachineName": {
+						"value": "[parameters('virtualMachineName')]"
+					}
+				},
+				"templateLink": {
+					"contentVersion": "[variables('templateLinkContentVersion')]",
+					"uri": "[variables('loadBalancerTemplateLinkUrl')]"
+				}
+			},
+			"type": "Microsoft.Resources/deployments"
+		},
+		{
+			"name": "[variables('networkInterfaceDeploymentName')]",
+			"apiVersion": "[variables('deploymentApiVersion')]",
+			"dependsOn": [
+				"[variables('loadBalancerDeploymentName')]"
+			],
+			"properties": {
+				"mode": "[variables('deploymentMode')]",
+				"parameters": {
+					"networkSecurityGroupResourceId": {
+						"value": "[parameters('networkSecurityGroupResourceId')]"
+					},
+					"staticIpAddress": {
+						"value": "[parameters('ipAddress')]"
+					},
+					"subnetResourceId": {
+						"value": "[parameters('virtualNetworkSubnetResourceId')]"
+					},
+					"tags": {
+						"value": "[parameters('tags')]"
+					},
+					"virtualMachineName": {
+						"value": "[parameters('virtualMachineName')]"
+					}
+				},
+				"templateLink": {
+					"contentVersion": "[variables('templateLinkContentVersion')]",
+					"uri": "[variables('networkInterfaceTemplateLinkUrl')]"
+				}
+			},
+			"type": "Microsoft.Resources/deployments"
+		},
+		{
+			"name": "[parameters('virtualMachineName')]",
+			"apiVersion": "[providers('Microsoft.Compute', 'virtualMachines').apiVersions[0]]",
+			"dependsOn": [
+				"[variables('networkInterfaceDeploymentName')]"
+			],
+			"location": "[resourceGroup().location]",
+			"properties": {
+				"diagnosticsProfile": {
+					"bootDiagnostics": {
+						"enabled": true,
+						"storageUri": "[concat('https://', parameters('diagnosticsStorageAccountName'), '.blob.core.windows.net/')]"
+					}
+				},
+				"hardwareProfile": {
+					"vmSize": "[parameters('virtualMachineHardwarProfileSize')]"
+				},
+				"networkProfile": {
+					"networkInterfaces": [
+						{
+							"id": "[resourceId('Microsoft.Network/networkInterfaces', variables('networkInterfaceName'))]"
+						}
+					]
+				},
+				"osProfile": {
+					"adminPassword": "[parameters('virtualMachinePassword')]",
+					"adminUsername": "[parameters('virtualMachineUserName')]",
+					"computerName": "[parameters('virtualMachineName')]",
+					"windowsConfiguration": {
+						"enableAutomaticUpdates": true,
+						"provisionVMAgent": true
+					}
+				},
+				"storageProfile": {
+					"imageReference": {
+						"offer": "[parameters('virtualMachineImageOffer')]",
+						"publisher": "[parameters('virtualMachineImagePublisher')]",
+						"sku": "[parameters('virtualMachineImageSku')]",
+						"version": "latest"
+					},
+					"osDisk": {
+						"caching": "ReadWrite",
+						"createOption": "FromImage",
+						"name": "[parameters('virtualMachineName')]",
+						"osType": "Windows",
+						"vhd": {
+							"uri": "[concat('https://', parameters('storageAccountName'), '.blob.core.windows.net/vhds/', parameters('virtualMachineName'), '.vhd')]"
+						}
+					}
+				}
+			},
+			"tags": "[parameters('tags')]",
+			"type": "Microsoft.Compute/virtualMachines"
+		}
+	]
+}

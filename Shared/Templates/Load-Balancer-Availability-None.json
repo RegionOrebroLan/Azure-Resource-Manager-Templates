@@ -1,0 +1,23 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"tags": {
+			"defaultValue": {},
+			"metadata": {
+				"description": "A json-object parameter (keys and values) for tags for all resources in this deployment. Eg. { \"Cost-center\":, \"ABC-123\", \"Environment\": \"Production\" }"
+			},
+			"type": "object"
+		},
+		"virtualMachineName": {
+			"metadata": {
+				"description": "The name of the virtual-machine."
+			},
+			"type": "string"
+		}
+	},
+	"variables": {
+		"_help": "This template is empty. But we need the parameters because its called conditionally. https://docs.microsoft.com/en-us/azure/azure-resource-manager/resource-manager-template-best-practices#conditionally-link-to-nested-templates"
+	},
+	"resources": []
+}

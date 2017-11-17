@@ -1,0 +1,68 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"kind": {
+			"allowedValues": [
+				"BlobStorage",
+				"Storage"
+			],
+			"defaultValue": "Storage",
+			"metadata": {
+				"description": "The kind of storage-account to create."
+			},
+			"type": "string"
+		},
+		"properties": {
+			"defaultValue": {},
+			"metadata": {
+				"description": "A json-object parameter for the storage-account properties."
+			},
+			"type": "object"
+		},
+		"skuName": {
+			"allowedValues": [
+				"Premium_LRS",
+				"Standard_GRS",
+				"Standard_LRS",
+				"Standard_RAGRS",
+				"Standard_ZRS"
+			],
+			"defaultValue": "Standard_LRS",
+			"metadata": {
+				"description": "The SKU (Stock Keeping Unit) type to create."
+			},
+			"type": "string"
+		},
+		"storageAccountName": {
+			"metadata": {
+				"description": "The name of the storage-account."
+			},
+			"type": "string"
+		},
+		"tags": {
+			"defaultValue": {},
+			"metadata": {
+				"description": "A json-object parameter (keys and values) for the storage-account tags."
+			},
+			"type": "object"
+		}
+	},
+	"variables": {
+		"_help": "https://docs.microsoft.com/en-us/azure/templates/microsoft.storage/storageaccounts"
+	},
+	"resources": [
+		{
+			"name": "[parameters('storageAccountName')]",
+			"apiVersion": "[providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]]",
+			"kind": "[parameters('kind')]",
+			"location": "[resourceGroup().location]",
+			"properties": "[parameters('properties')]",
+			"sku": {
+				"name": "[parameters('skuName')]"
+			},
+			"tags": "[parameters('tags')]",
+			"type": "Microsoft.Storage/storageAccounts"
+		}
+	]
+}

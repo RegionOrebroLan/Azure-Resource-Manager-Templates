@@ -1,0 +1,101 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"dnsServers": {
+			"defaultValue": [],
+			"metadata": {
+				"description": "The dns-servers (ip-addresses) for the virtual-network."
+			},
+			"type": "array"
+		},
+		"ipAddressFirstPart": {
+			"defaultValue": 10,
+			"maxValue": 254,
+			"metadata": {
+				"description": "The ip-address-first-part is used together with the ip-address-second-part. The combination will be used as the beginning of all ip-addresses in this deployment, '[IP-ADDRESS-FIRST-PART].[IP-ADDRESS-SECOND-PART].0.10'. The default value is just an example. Be sure to enter a value that does not conflict with other networks in the resource-group. Eg. 10.0.0.10 for an ip-address and 10.0.0.0/24 for an ip-address-space."
+			},
+			"minValue": 1,
+			"type": "int"
+		},
+		"ipAddressSecondPart": {
+			"defaultValue": 0,
+			"maxValue": 254,
+			"metadata": {
+				"description": "The ip-address-second-part is used together with the ip-address-first-part. The combination will be used as the beginning of all ip-addresses in this deployment, '[IP-ADDRESS-FIRST-PART].[IP-ADDRESS-SECOND-PART].0.10'. The default value is just an example. Be sure to enter a value that does not conflict with other networks in the resource-group. Eg. 10.0.0.10 for an ip-address and 10.0.0.0/24 for an ip-address-space."
+			},
+			"minValue": 0,
+			"type": "int"
+		},
+		"tags": {
+			"defaultValue": {},
+			"metadata": {
+				"description": "A json-object parameter (keys and values) for the virtual-network tags."
+			},
+			"type": "object"
+		},
+		"virtualNetworkName": {
+			"metadata": {
+				"description": "The name of the virtual-network."
+			},
+			"type": "string"
+		}
+	},
+	"variables": {
+		"_help": [
+			{
+				"Microsoft.Network/virtualNetworks template reference": "https://docs.microsoft.com/en-us/azure/templates/microsoft.network/virtualnetworks"
+			},
+			{
+				"To calculate IP subnets/ranges": "http://www.ipaddressguide.com/cidr"
+			}
+		],
+		"addressPrefix": "[concat(variables('ipAddressPrefix'), '0.0/24')]",
+		"applicationGatewaySubnetAddressPrefix": "[concat(variables('ipAddressPrefix'), '0.128/26')]",
+		"applicationGatewaySubnetName": "Application-Gateway-Subnet",
+		"defaultSubnetAddressPrefix": "[concat(variables('ipAddressPrefix'), '0.0/25')]",
+		"defaultSubnetName": "Default-Subnet",
+		"gatewaySubnetAddressPrefix": "[concat(variables('ipAddressPrefix'), '0.192/26')]",
+		"gatewaySubnetName": "GatewaySubnet",
+		"ipAddressPrefix": "[concat(parameters('ipAddressFirstPart'), '.', parameters('ipAddressSecondPart'), '.')]"
+	},
+	"resources": [
+		{
+			"name": "[parameters('virtualNetworkName')]",
+			"apiVersion": "[providers('Microsoft.Network', 'virtualNetworks').apiVersions[0]]",
+			"location": "[resourceGroup().location]",
+			"properties": {
+				"addressSpace": {
+					"addressPrefixes": [
+						"[variables('addressPrefix')]"
+					]
+				},
+				"dhcpOptions": {
+					"dnsServers": "[parameters('dnsServers')]"
+				},
+				"subnets": [
+					{
+						"name": "[variables('applicationGatewaySubnetName')]",
+						"properties": {
+							"addressPrefix": "[variables('applicationGatewaySubnetAddressPrefix')]"
+						}
+					},
+					{
+						"name": "[variables('defaultSubnetName')]",
+						"properties": {
+							"addressPrefix": "[variables('defaultSubnetAddressPrefix')]"
+						}
+					},
+					{
+						"name": "[variables('gatewaySubnetName')]",
+						"properties": {
+							"addressPrefix": "[variables('gatewaySubnetAddressPrefix')]"
+						}
+					}
+				]
+			},
+			"tags": "[parameters('tags')]",
+			"type": "Microsoft.Network/virtualNetworks"
+		}
+	]
+}

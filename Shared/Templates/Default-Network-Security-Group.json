@@ -1,0 +1,48 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"networkSecurityGroupName": {
+			"metadata": {
+				"description": "The name of the network-security-group."
+			},
+			"type": "string"
+		},
+		"tags": {
+			"defaultValue": {},
+			"metadata": {
+				"description": "A json-object parameter (keys and values) for the network-security-group tags."
+			},
+			"type": "object"
+		}
+	},
+	"variables": {
+		"_help": "https://docs.microsoft.com/en-us/azure/templates/microsoft.network/networksecuritygroups"
+	},
+	"resources": [
+		{
+			"name": "[parameters('networkSecurityGroupName')]",
+			"apiVersion": "[providers('Microsoft.Network', 'networkSecurityGroups').apiVersions[0]]",
+			"location": "[resourceGroup().location]",
+			"properties": {
+				"securityRules": [
+					{
+						"name": "Default-Allow-RDP",
+						"properties": {
+							"protocol": "TCP",
+							"sourcePortRange": "*",
+							"destinationPortRange": "3389",
+							"sourceAddressPrefix": "*",
+							"destinationAddressPrefix": "*",
+							"access": "Allow",
+							"priority": 1000,
+							"direction": "Inbound"
+						}
+					}
+				]
+			},
+			"tags": "[parameters('tags')]",
+			"type": "Microsoft.Network/networkSecurityGroups"
+		}
+	]
+}

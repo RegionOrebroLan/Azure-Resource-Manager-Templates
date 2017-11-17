@@ -1,0 +1,81 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"tags": {
+			"defaultValue": {},
+			"metadata": {
+				"description": "A json-object parameter (keys and values) for tags for all resources in this deployment. Eg. { \"Cost-center\":, \"ABC-123\", \"Environment\": \"Production\" }"
+			},
+			"type": "object"
+		},
+		"virtualMachineName": {
+			"metadata": {
+				"description": "The name of the virtual-machine."
+			},
+			"type": "string"
+		}
+	},
+	"variables": {
+		"_help": "https://docs.microsoft.com/en-us/azure/templates/microsoft.network/loadbalancers",
+		"frontendName": "[concat(variables('loadBalancerName'), '-Frontend')]",
+		"loadBalancerIpName": "[concat(variables('loadBalancerName'), '-IP')]",
+		"loadBalancerIpResourceId": "[resourceId('Microsoft.Network/publicIPAddresses', variables('loadBalancerIpName'))]",
+		"loadBalancerName": "[concat(parameters('virtualMachineName'), '-Load-Balancer')]",
+		"loadBalancerResourceId": "[resourceId('Microsoft.Network/loadBalancers', variables('loadBalancerName'))]"
+	},
+	"resources": [
+		{
+			"name": "[variables('loadBalancerName')]",
+			"apiVersion": "[providers('Microsoft.Network', 'loadBalancers').apiVersions[0]]",
+			"dependsOn": [
+				"[variables('loadBalancerIpName')]"
+			],
+			"location": "[resourceGroup().location]",
+			"properties": {
+				"backendAddressPools": [
+					{
+						"name": "[concat(variables('loadBalancerName'), '-Backend-Pool')]"
+					}
+				],
+				"frontendIPConfigurations": [
+					{
+						"name": "[variables('frontendName')]",
+						"properties": {
+							"publicIPAddress": {
+								"id": "[variables('loadBalancerIpResourceId')]"
+							}
+						}
+					}
+				],
+				"inboundNatRules": [
+					{
+						"name": "[concat(variables('loadBalancerName'), '-Inbound-Nat-Rule-Rdp')]",
+						"properties": {
+							"backendPort": 3389,
+							"frontendIPConfiguration": {
+								"id": "[concat(variables('loadBalancerResourceId'), '/frontendIPConfigurations/', variables('frontendName'))]"
+							},
+							"frontendPort": 443,
+							"protocol": "Tcp"
+						}
+					}
+				]
+			},
+			"tags": "[parameters('tags')]",
+			"type": "Microsoft.Network/loadBalancers"
+		},
+		{
+			"name": "[variables('loadBalancerIpName')]",
+			"apiVersion": "[providers('Microsoft.Network', 'publicIPAddresses').apiVersions[0]]",
+			"location": "[resourceGroup().location]",
+			"properties": {
+				"dnsSettings": {
+					"domainNameLabel": "[toLower(variables('loadBalancerName'))]"
+				}
+			},
+			"tags": "[parameters('tags')]",
+			"type": "Microsoft.Network/publicIPAddresses"
+		}
+	]
+}

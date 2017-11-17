@@ -1,0 +1,14 @@
+_ReSharper*/
+.vs*/
+bin/
+debug/
+obj/
+packages/*
+release/
+Shared/Automation/DSC/Resources/*
+testresults/
+*.suo
+*.user
+
+!Shared/Automation/DSC/Resources/Download.ps1
+!Shared/Automation/DSC/Resources/ReadMe.md

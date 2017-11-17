@@ -1,0 +1,79 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"networkSecurityGroupResourceId": {
+			"metadata": {
+				"description": "The network-security-group-resource-id for the network-interface."
+			},
+			"type": "string"
+		},
+		"staticIpAddress": {
+			"metadata": {
+				"description": "The static-ip-address for the network-interface."
+			},
+			"type": "string"
+		},
+		"subnetResourceId": {
+			"metadata": {
+				"description": "The subnet-resource-id for the network-interface."
+			},
+			"type": "string"
+		},
+		"tags": {
+			"defaultValue": {},
+			"metadata": {
+				"description": "A json-object parameter (keys and values) for tags for all resources in this deployment. Eg. { \"Cost-center\":, \"ABC-123\", \"Environment\": \"Production\" }"
+			},
+			"type": "object"
+		},
+		"virtualMachineName": {
+			"metadata": {
+				"description": "The name of the virtual-machine."
+			},
+			"type": "string"
+		}
+	},
+	"variables": {
+		"_help": "https://docs.microsoft.com/en-us/azure/templates/microsoft.network/networkinterfaces",
+		"ipConfigurationName": "[concat(variables('networkInterfaceName'), '-IP-Configuration')]",
+		"loadBalancerName": "[concat(parameters('virtualMachineName'), '-Load-Balancer')]",
+		"networkInterfaceName": "[concat(parameters('virtualMachineName'), '-Network-Interface')]"
+	},
+	"resources": [
+		{
+			"name": "[variables('networkInterfaceName')]",
+			"apiVersion": "[providers('Microsoft.Network', 'networkInterfaces').apiVersions[0]]",
+			"location": "[resourceGroup().location]",
+			"properties": {
+				"ipConfigurations": [
+					{
+						"name": "[variables('ipConfigurationName')]",
+						"properties": {
+							"loadBalancerBackendAddressPools": [
+								{
+									"id": "[concat(resourceId('Microsoft.Network/loadBalancers', variables('loadBalancerName')), '/backendAddressPools/', variables('loadBalancerName'), '-Backend-Pool')]"
+								}
+							],
+							"loadBalancerInboundNatRules": [
+								{
+									"id": "[concat(resourceId('Microsoft.Network/loadBalancers', variables('loadBalancerName')), '/inboundNatRules/', variables('loadBalancerName'), '-Inbound-Nat-Rule-Rdp')]"
+								}
+							],
+							"privateIPAddress": "[parameters('staticIpAddress')]",
+							"privateIPAllocationMethod": "Static",
+							"subnet": {
+								"id": "[parameters('subnetResourceId')]"
+							}
+						}
+					}
+				],
+				"networkSecurityGroup": {
+					"id": "[parameters('networkSecurityGroupResourceId')]"
+				}
+			},
+			"tags": "[parameters('tags')]",
+			"type": "Microsoft.Network/networkInterfaces"
+		}
+	]
+}

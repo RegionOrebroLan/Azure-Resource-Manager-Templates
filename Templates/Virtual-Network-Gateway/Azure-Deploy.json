@@ -1,0 +1,143 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"ipAddressFirstPart": {
+			"defaultValue": 10,
+			"maxValue": 254,
+			"metadata": {
+				"description": "The ip-address-first-part is used together with the ip-address-second-part. The combination will be used as the beginning of all ip-addresses in this deployment, '[IP-ADDRESS-FIRST-PART].[IP-ADDRESS-SECOND-PART].0.10'. The default value is just an example. Be sure to enter a value that does not conflict with other networks in the resource-group. Eg. 10.0.0.10 for an ip-address and 10.0.0.0/24 for an ip-address-space."
+			},
+			"minValue": 1,
+			"type": "int"
+		},
+		"ipAddressSecondPart": {
+			"defaultValue": 0,
+			"maxValue": 254,
+			"metadata": {
+				"description": "The ip-address-second-part is used together with the ip-address-first-part. The combination will be used as the beginning of all ip-addresses in this deployment, '[IP-ADDRESS-FIRST-PART].[IP-ADDRESS-SECOND-PART].0.10'. The default value is just an example. Be sure to enter a value that does not conflict with other networks in the resource-group. Eg. 10.0.0.10 for an ip-address and 10.0.0.0/24 for an ip-address-space."
+			},
+			"minValue": 0,
+			"type": "int"
+		},
+		"resourceNamePrefix": {
+			"maxLength": 5,
+			"metadata": {
+				"description": "The prefix will be added at the beginning of all names in this deployment. Letters, numbers and hyphens are recomended. Eg. 'AB01-'."
+			},
+			"type": "string"
+		},
+		"virtualNetworkGatewayCertificateValue": {
+			"metadata": {
+				"description": "If you do not have \"real\" certificates, run https://raw.githubusercontent.com/RegionOrebroLan/Azure-Resource-Manager-Templates/master/Templates/Virtual-Network-Gateway/Certificate-Value.ps1 to get the value. Read more: https://docs.microsoft.com/en-us/azure/vpn-gateway/vpn-gateway-howto-point-to-site-resource-manager-portal#generatecert"
+			},
+			"type": "securestring"
+		}
+	},
+	"variables": {
+		"_help": "https://docs.microsoft.com/en-us/azure/templates/microsoft.network/virtualnetworkgateways",
+		"deploymentApiVersion": "[providers('Microsoft.Resources', 'deployments').apiVersions[0]]",
+		"deploymentDirectoryUrl": "[concat(substring(variables('deploymentUrl'), 0, indexOf(toLower(variables('deploymentUrl')), '/azure-deploy.json')), '/')]",
+		"deploymentMode": "Incremental",
+		"deploymentUrl": "[deployment().properties.templateLink.uri]",
+		"internalResourceNamePrefix": "[replace(replace(toLower(parameters('resourceNamePrefix')), '-', ''), '_', '')]",
+		"internalResourceNameSuffix": "[uniqueString(resourceGroup().id)]",
+		"ipAddressPrefix": "[concat(parameters('ipAddressFirstPart'), '.', parameters('ipAddressSecondPart'), '.')]",
+		"resourceNamePrefix": "[toUpper(parameters('resourceNamePrefix'))]",
+		"tags": {},
+		"tags-description": "A json-object parameter (keys and values) for tags for all resources in this deployment. Eg. { \"Cost-center\":, \"ABC-123\", \"Environment\": \"Production\" }",
+		"templateLinkContentVersion": "1.0.0.0",
+		"templateLinkDirectoryUrl": "[concat(substring(variables('deploymentDirectoryUrl'), 0, indexOf(toLower(variables('deploymentDirectoryUrl')), '/templates/virtual-network-gateway/')), '/Shared/Templates/')]",
+		"virtualNetworkDeploymentName": "Virtual-Network-Deployment",
+		"virtualNetworkGatewayIpName": "[concat(variables('virtualNetworkGatewayName'), '-IP')]",
+		"virtualNetworkGatewayName": "[concat(variables('resourceNamePrefix'), 'Virtual-Network-Gateway')]",
+		"virtualNetworkGatewayProperties": {
+			"gatewayType": "Vpn",
+			"ipConfigurations": [
+				{
+					"name": "[concat(variables('virtualNetworkGatewayName'), '-Configuration')]",
+					"properties": {
+						"publicIPAddress": {
+							"id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('virtualNetworkGatewayIpName'))]"
+						},
+						"subnet": {
+							"id": "[variables('virtualNetworkGatewaySubnetResourceId')]"
+						}
+					}
+				}
+			],
+			"vpnClientConfiguration": {
+				"vpnClientAddressPool": {
+					"addressPrefixes": [
+						"172.16.201.0/24"
+					]
+				},
+				"vpnClientRootCertificates": [
+					{
+						"name": "[concat(variables('virtualNetworkGatewayName'), '-Certificate')]",
+						"properties": {
+							"publicCertData": "[parameters('virtualNetworkGatewayCertificateValue')]"
+						}
+					}
+				]
+			},
+			"vpnType": "RouteBased"
+		},
+		"virtualNetworkGatewaySubnetResourceId": "[concat(variables('virtualNetworkResourceId'), '/subnets/GatewaySubnet')]",
+		"virtualNetworkName": "[concat(variables('resourceNamePrefix'), 'Virtual-Network')]",
+		"virtualNetworkResourceId": "[resourceId('Microsoft.Network/virtualNetworks', variables('virtualNetworkName'))]",
+		"virtualNetworkTemplateLinkUrl": "[concat(variables('templateLinkDirectoryUrl'), 'Default-Virtual-Network.json')]"
+	},
+	"resources": [
+		{
+			"name": "[variables('virtualNetworkDeploymentName')]",
+			"apiVersion": "[variables('deploymentApiVersion')]",
+			"properties": {
+				"mode": "[variables('deploymentMode')]",
+				"parameters": {
+					"ipAddressFirstPart": {
+						"value": "[parameters('ipAddressFirstPart')]"
+					},
+					"ipAddressSecondPart": {
+						"value": "[parameters('ipAddressSecondPart')]"
+					},
+					"tags": {
+						"value": "[variables('tags')]"
+					},
+					"virtualNetworkName": {
+						"value": "[variables('virtualNetworkName')]"
+					}
+				},
+				"templateLink": {
+					"contentVersion": "[variables('templateLinkContentVersion')]",
+					"uri": "[variables('virtualNetworkTemplateLinkUrl')]"
+				}
+			},
+			"type": "Microsoft.Resources/deployments"
+		},
+		{
+			"name": "[variables('virtualNetworkGatewayName')]",
+			"apiVersion": "[providers('Microsoft.Network', 'virtualNetworkGateways').apiVersions[0]]",
+			"dependsOn": [
+				"[variables('virtualNetworkDeploymentName')]",
+				"[variables('virtualNetworkGatewayIpName')]"
+			],
+			"location": "[resourceGroup().location]",
+			"properties": "[variables('virtualNetworkGatewayProperties')]",
+			"tags": "[variables('tags')]",
+			"type": "Microsoft.Network/virtualNetworkGateways"
+		},
+		{
+			"name": "[variables('virtualNetworkGatewayIpName')]",
+			"apiVersion": "[providers('Microsoft.Network', 'publicIPAddresses').apiVersions[0]]",
+			"location": "[resourceGroup().location]",
+			"properties": {
+				"dnsSettings": {
+					"domainNameLabel": "[toLower(variables('virtualNetworkGatewayName'))]"
+				}
+			},
+			"tags": "[variables('tags')]",
+			"type": "Microsoft.Network/publicIPAddresses"
+		}
+	]
+}
