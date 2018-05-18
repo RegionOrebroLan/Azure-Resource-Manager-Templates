@@ -34,11 +34,13 @@ function Get-ApplicationGatewayAuthenticationCertificateDnsNames
 	$resourceNamePrefix = $resourceNamePrefix.ToLower();
 
 	$dnsNames = New-Object System.Collections.Generic.List[string];
-
-	# This is not required but maybe we should include it, anyhow: $dnsNames.Add("$($resourceNamePrefix)web.$($domainName)");
-	$dnsNames.Add("$($resourceNamePrefix)web-01.$($domainName)");
-	$dnsNames.Add("$($resourceNamePrefix)web-02.$($domainName)");
-
+	
+	# Wildcard-certificate
+	$dnsNames.Add("*.$($domainName)");
+	# If we dont want to use a wildcard:
+	# $dnsNames.Add("$($resourceNamePrefix)web-01.$($domainName)");
+	# $dnsNames.Add("$($resourceNamePrefix)web-02.$($domainName)");
+	
 	return $dnsNames;
 }
 
@@ -115,7 +117,7 @@ function Get-WebDevelopmentDomainCertificateInformation
 	$virtualNetworkGatewayCertificateInformation = Get-VirtualNetworkGatewayCertificateInformation;
 
 	$applicationGatewayAuthenticationCertificateDnsNames = Get-ApplicationGatewayAuthenticationCertificateDnsNames -DomainName $domainName -ResourceNamePrefix $resourceNamePrefix;
-	$applicationGatewayAuthenticationCertificateSubject = "$($_certificateNamePrefix)$($resourceNamePrefix)web.$($domainName)";
+	$applicationGatewayAuthenticationCertificateSubject = "$($_certificateNamePrefix)*.$($domainName)";
 
 	$applicationGatewaySslCertificateDnsNames = Get-ApplicationGatewaySslCertificateDnsNames -DomainName $domainName -ResourceNamePrefix $resourceNamePrefix;
 	$applicationGatewaySslCertificateSubject = "$($_certificateNamePrefix)$($applicationGatewaySslCertificateDnsNames[0])";
