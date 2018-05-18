@@ -96,7 +96,7 @@
 		"deploymentApiVersion": "[providers('Microsoft.Resources', 'deployments').apiVersions[0]]",
 		"deploymentDirectoryUrl": "[concat(substring(variables('deploymentUrl'), 0, indexOf(toLower(variables('deploymentUrl')), '/azure-deploy.json')), '/')]",
 		"deploymentMode": "Incremental",
-		"deploymentUrl": "[deployment().properties.templateLink.uri]",
+		"deploymentUrl": "[string(deployment().properties.templateLink.uri)]",
 		"developmentDeploymentName": "[concat(variables('developmentName'), '-Deployment')]",
 		"developmentName": "[concat(variables('resourceNamePrefix'), 'Dev-01')]",
 		"diagnosticsStorageAccountDeploymentName": "Diagnostics-Storage-Account-Deployment",

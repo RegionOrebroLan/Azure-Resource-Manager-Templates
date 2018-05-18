@@ -39,7 +39,7 @@
 		"deploymentApiVersion": "[providers('Microsoft.Resources', 'deployments').apiVersions[0]]",
 		"deploymentDirectoryUrl": "[concat(substring(variables('deploymentUrl'), 0, indexOf(toLower(variables('deploymentUrl')), '/azure-deploy.json')), '/')]",
 		"deploymentMode": "Incremental",
-		"deploymentUrl": "[deployment().properties.templateLink.uri]",
+		"deploymentUrl": "[string(deployment().properties.templateLink.uri)]",
 		"internalResourceNamePrefix": "[replace(replace(toLower(parameters('resourceNamePrefix')), '-', ''), '_', '')]",
 		"internalResourceNameSuffix": "[uniqueString(resourceGroup().id)]",
 		"ipAddressPrefix": "[concat(parameters('ipAddressFirstPart'), '.', parameters('ipAddressSecondPart'), '.')]",
