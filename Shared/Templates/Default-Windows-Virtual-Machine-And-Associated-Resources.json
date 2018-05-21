@@ -190,6 +190,7 @@
 		"networkInterfaceDeploymentName": "[concat(variables('networkInterfaceName'), '-Deployment')]",
 		"networkInterfaceName": "[concat(parameters('virtualMachineName'), '-Network-Interface')]",
 		"networkInterfaceTemplateLinkUrl": "[concat(parameters('templateLinkDirectoryUrl'), 'Network-Interface-Availability-', parameters('availability'), '.json')]",
+		"scheduleName": "[concat('Shutdown-ComputeVM-', parameters('virtualMachineName'))]",
 		"templateLinkContentVersion": "1.0.0.0"
 	},
 	"resources": [
@@ -244,6 +245,28 @@
 				}
 			},
 			"type": "Microsoft.Resources/deployments"
+		},
+		{
+			"name": "[variables('scheduleName')]",
+			"apiVersion": "[providers('Microsoft.DevTestLab', 'schedules').apiVersions[0]]",
+			"dependsOn": [
+				"[parameters('virtualMachineName')]"
+			],
+			"location": "[resourceGroup().location]",
+			"properties": {
+				"dailyRecurrence": {
+					"time": "1800"
+				},
+				"notificationSettings": {
+					"status": "Disabled",
+					"timeInMinutes": 30
+				},
+				"status": "Enabled",
+				"targetResourceId": "[resourceId('Microsoft.Compute/virtualMachines', parameters('virtualMachineName'))]",
+				"taskType": "ComputeVmShutdownTask",
+				"timeZoneId": "W. Europe Standard Time"
+			},
+			"type": "Microsoft.DevTestLab/schedules"
 		},
 		{
 			"name": "[parameters('virtualMachineName')]",
