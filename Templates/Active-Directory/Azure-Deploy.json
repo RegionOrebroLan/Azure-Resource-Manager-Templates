@@ -1,0 +1,417 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"domainName": {
+			"defaultValue": "local.net",
+			"metadata": {
+				"description": "The active directory domain-name."
+			},
+			"type": "string"
+		},
+		"machineName": {
+			"metadata": {
+				"description": "The name of the virtual machine."
+			},
+			"type": "string"
+		},
+		"password": {
+			"metadata": {
+				"description": "Password for everything in this deployment."
+			},
+			"type": "securestring"
+		},
+		"userName": {
+			"metadata": {
+				"description": "User-name for everything in this deployment."
+			},
+			"type": "securestring"
+		}
+	},
+	"variables": {
+		"_help": "https://docs.microsoft.com/en-us/azure/templates/microsoft.resources/deployments",
+		"backslash": "\\",
+		"deploymentApiVersion": "[providers('Microsoft.Resources', 'deployments').apiVersions[0]]",
+		"deploymentDirectoryUrl": "[concat(substring(variables('deploymentUrl'), 0, indexOf(toLower(variables('deploymentUrl')), '/azure-deploy.json')), '/')]",
+		"deploymentMode": "Incremental",
+		"deploymentUrl": "[string(deployment().properties.templateLink.uri)]",
+		"diagnosticsStorageAccountDeploymentName": "Diagnostics-Storage-Account-Deployment",
+		"diagnosticsStorageAccountName": "[replace(substring(concat(variables('internalResourceNamePrefix'), 'diagnostics', variables('internalResourceNameSuffix')), 0, 24), '-', '')]",
+		"domainAdministrator": "[concat(variables('domainShortName'), variables('backslash'), parameters('userName'))]",
+		"domainCredential": {
+			"Password": "[parameters('password')]",
+			"UserName": "[variables('domainAdministrator')]"
+		},
+		"domainName": "[toLower(parameters('domainName'))]",
+		"domainShortName": "[toUpper(first(split(variables('domainName'), '.')))]",
+		"internalResourceNamePrefix": "[replace(substring(concat(replace(replace(toLower(variables('resourceNamePrefix')), '-', ''), '_', ''), '----'), 0, 4), '-', '')]",
+		"internalResourceNameSuffix": "[concat(uniqueString(resourceGroup().id), '------------------------')]",
+		"ipAddress": "[concat(variables('ipAddressPrefix'), '0.10')]",
+		"ipAddressFirstPart": 10,
+		"ipAddressPrefix": "[concat(variables('ipAddressFirstPart'), '.', variables('ipAddressSecondPart'), '.')]",
+		"ipAddressSecondPart": 0,
+		"loadBalancerFrontendName": "[concat(variables('loadBalancerName'), '-Frontend')]",
+		"loadBalancerIpName": "[concat(variables('loadBalancerName'), '-IP')]",
+		"loadBalancerIpResourceId": "[resourceId('Microsoft.Network/publicIPAddresses', variables('loadBalancerIpName'))]",
+		"loadBalancerName": "[concat(parameters('machineName'), '-Load-Balancer')]",
+		"loadBalancerResourceId": "[resourceId('Microsoft.Network/loadBalancers', variables('loadBalancerName'))]",
+		"networkInterfaceName": "[concat(parameters('machineName'), '-Network-Interface')]",
+		"networkSecurityGroupName": "[concat(variables('resourceNamePrefix'), 'Network-Security-Group')]",
+		"networkSecurityGroupResourceId": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroupName'))]",
+		"publicIpAddressName": "[concat(parameters('machineName'), '-IP')]",
+		"repositoryUrl": "[concat(substring(variables('deploymentDirectoryUrl'), 0, indexOf(toLower(variables('deploymentDirectoryUrl')), '/templates/active-directory/')), '/')]",
+		"resourceNamePrefix": "[toUpper(concat(replace(substring(concat(first(split(parameters('machineName'), '-')), '--------------------'), 0, 20), '-', ''), '-'))]",
+		"scheduleName": "[concat('Shutdown-ComputeVM-', parameters('machineName'))]",
+		"sharedDirectoryUrl": "[concat(variables('repositoryUrl'), 'Shared/')]",
+		"storageAccountDeploymentName": "Storage-Account-Deployment",
+		"storageAccountName": "[replace(substring(concat(variables('internalResourceNamePrefix'), 'storage', variables('internalResourceNameSuffix')), 0, 24), '-', '')]",
+		"storageAccountTemplateLinkUrl": "[concat(variables('templateLinkDirectoryUrl'), 'Storage-Account.json')]",
+		"tags": {},
+		"tags-description": "A json-object parameter (keys and values) for tags for all resources in this deployment. Eg. { \"Cost-center\":, \"ABC-123\", \"Environment\": \"Production\" }",
+		"templateLinkContentVersion": "1.0.0.0",
+		"templateLinkDirectoryUrl": "[concat(variables('sharedDirectoryUrl'), 'Templates/')]",
+		"virtualNetworkDefaultSubnetResourceId": "[concat(variables('virtualNetworkResourceId'), '/subnets/Default-Subnet')]",
+		"virtualNetworkDeploymentName": "Virtual-Network-Deployment",
+		"virtualNetworkName": "[concat(variables('resourceNamePrefix'), 'Virtual-Network')]",
+		"virtualNetworkResourceId": "[resourceId('Microsoft.Network/virtualNetworks', variables('virtualNetworkName'))]",
+		"virtualNetworkTemplateLinkUrl": "[concat(variables('templateLinkDirectoryUrl'), 'Default-Virtual-Network.json')]"
+	},
+	"resources": [
+		{
+			"name": "[variables('diagnosticsStorageAccountDeploymentName')]",
+			"apiVersion": "[variables('deploymentApiVersion')]",
+			"properties": {
+				"mode": "[variables('deploymentMode')]",
+				"parameters": {
+					"storageAccountName": {
+						"value": "[variables('diagnosticsStorageAccountName')]"
+					},
+					"tags": {
+						"value": "[variables('tags')]"
+					}
+				},
+				"templateLink": {
+					"contentVersion": "[variables('templateLinkContentVersion')]",
+					"uri": "[variables('storageAccountTemplateLinkUrl')]"
+				}
+			},
+			"type": "Microsoft.Resources/deployments"
+		},
+		{
+			"name": "[variables('loadBalancerName')]",
+			"apiVersion": "[providers('Microsoft.Network', 'loadBalancers').apiVersions[0]]",
+			"dependsOn": [
+				"[variables('loadBalancerIpName')]"
+			],
+			"location": "[resourceGroup().location]",
+			"properties": {
+				"backendAddressPools": [
+					{
+						"name": "[concat(variables('loadBalancerName'), '-Backend-Pool')]"
+					}
+				],
+				"frontendIPConfigurations": [
+					{
+						"name": "[variables('loadBalancerFrontendName')]",
+						"properties": {
+							"publicIPAddress": {
+								"id": "[variables('loadBalancerIpResourceId')]"
+							}
+						}
+					}
+				],
+				"inboundNatRules": [
+					{
+						"name": "[concat(variables('loadBalancerName'), '-Inbound-Nat-Rule-Ldap')]",
+						"properties": {
+							"backendPort": 389,
+							"frontendIPConfiguration": {
+								"id": "[concat(variables('loadBalancerResourceId'), '/frontendIPConfigurations/', variables('loadBalancerFrontendName'))]"
+							},
+							"frontendPort": 80,
+							"protocol": "Tcp"
+						}
+					},
+					{
+						"name": "[concat(variables('loadBalancerName'), '-Inbound-Nat-Rule-Rdp')]",
+						"properties": {
+							"backendPort": 3389,
+							"frontendIPConfiguration": {
+								"id": "[concat(variables('loadBalancerResourceId'), '/frontendIPConfigurations/', variables('loadBalancerFrontendName'))]"
+							},
+							"frontendPort": 443,
+							"protocol": "Tcp"
+						}
+					}
+				]
+			},
+			"tags": "[variables('tags')]",
+			"type": "Microsoft.Network/loadBalancers"
+		},
+		{
+			"name": "[variables('loadBalancerIpName')]",
+			"apiVersion": "[providers('Microsoft.Network', 'publicIPAddresses').apiVersions[0]]",
+			"location": "[resourceGroup().location]",
+			"properties": {
+				"dnsSettings": {
+					"domainNameLabel": "[toLower(variables('loadBalancerName'))]"
+				}
+			},
+			"tags": "[variables('tags')]",
+			"type": "Microsoft.Network/publicIPAddresses"
+		},
+		{
+			"name": "[parameters('machineName')]",
+			"apiVersion": "[providers('Microsoft.Compute', 'virtualMachines').apiVersions[0]]",
+			"dependsOn": [
+				"[variables('networkInterfaceName')]"
+			],
+			"location": "[resourceGroup().location]",
+			"properties": {
+				"diagnosticsProfile": {
+					"bootDiagnostics": {
+						"enabled": true,
+						"storageUri": "[concat('https://', variables('diagnosticsStorageAccountName'), '.blob.core.windows.net/')]"
+					}
+				},
+				"hardwareProfile": {
+					"vmSize": "Standard_DS2_v2"
+				},
+				"networkProfile": {
+					"networkInterfaces": [
+						{
+							"id": "[resourceId('Microsoft.Network/networkInterfaces', variables('networkInterfaceName'))]"
+						}
+					]
+				},
+				"osProfile": {
+					"adminPassword": "[parameters('password')]",
+					"adminUsername": "[parameters('userName')]",
+					"computerName": "[parameters('machineName')]",
+					"windowsConfiguration": {
+						"enableAutomaticUpdates": true,
+						"provisionVMAgent": true
+					}
+				},
+				"storageProfile": {
+					"imageReference": {
+						"offer": "WindowsServer",
+						"publisher": "MicrosoftWindowsServer",
+						"sku": "2016-Datacenter",
+						"version": "latest"
+					},
+					"osDisk": {
+						"caching": "ReadWrite",
+						"createOption": "FromImage",
+						"name": "[parameters('machineName')]",
+						"osType": "Windows",
+						"vhd": {
+							"uri": "[concat('https://', variables('storageAccountName'), '.blob.core.windows.net/vhds/', parameters('machineName'), '.vhd')]"
+						}
+					}
+				}
+			},
+			"tags": "[variables('tags')]",
+			"type": "Microsoft.Compute/virtualMachines"
+		},
+		{
+			"name": "[concat(parameters('machineName'), '/DSC-Extension')]",
+			"apiVersion": "[providers('Microsoft.Compute', 'virtualMachines/extensions').apiVersions[0]]",
+			"dependsOn": [
+				"[parameters('machineName')]"
+			],
+			"location": "[resourceGroup().location]",
+			"properties": {
+				"autoUpgradeMinorVersion": "true",
+				"protectedSettings": {
+					"configurationArguments": {
+						"Credential": "[variables('domainCredential')]"
+					}
+				},
+				"publisher": "Microsoft.Powershell",
+				"settings": {
+					"configuration": {
+						"function": "MachineConfiguration",
+						"script": "Configuration.ps1",
+						"url": "[concat(variables('deploymentDirectoryUrl'), 'Modules.zip')]"
+					},
+					"configurationArguments": {
+						"DomainName": "[variables('domainName')]"
+					},
+					"wmfVersion": "latest"
+				},
+				"type": "DSC",
+				"typeHandlerVersion": "2.0"
+			},
+			"type": "Microsoft.Compute/virtualMachines/extensions"
+		},
+		{
+			"name": "[variables('networkInterfaceName')]",
+			"apiVersion": "[providers('Microsoft.Network', 'networkInterfaces').apiVersions[0]]",
+			"dependsOn": [
+				"[variables('publicIpAddressName')]",
+				"[variables('virtualNetworkDeploymentName')]"
+			],
+			"location": "[resourceGroup().location]",
+			"properties": {
+				"ipConfigurations": [
+					{
+						"name": "[concat(variables('networkInterfaceName'), '-IP-Configuration')]",
+						"properties": {
+							"loadBalancerBackendAddressPools": [
+								{
+									"id": "[concat(resourceId('Microsoft.Network/loadBalancers', variables('loadBalancerName')), '/backendAddressPools/', variables('loadBalancerName'), '-Backend-Pool')]"
+								}
+							],
+							"loadBalancerInboundNatRules": [
+								{
+									"id": "[concat(resourceId('Microsoft.Network/loadBalancers', variables('loadBalancerName')), '/inboundNatRules/', variables('loadBalancerName'), '-Inbound-Nat-Rule-Ldap')]"
+								},
+								{
+									"id": "[concat(resourceId('Microsoft.Network/loadBalancers', variables('loadBalancerName')), '/inboundNatRules/', variables('loadBalancerName'), '-Inbound-Nat-Rule-Rdp')]"
+								}
+							],
+							"privateIPAddress": "[variables('ipAddress')]",
+							"privateIPAllocationMethod": "Static",
+							"publicIPAddress": {
+								"id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('publicIPAddressName'))]"
+							},
+							"subnet": {
+								"id": "[variables('virtualNetworkDefaultSubnetResourceId')]"
+							}
+						}
+					}
+				],
+				"networkSecurityGroup": {
+					"id": "[variables('networkSecurityGroupResourceId')]"
+				}
+			},
+			"tags": "[variables('tags')]",
+			"type": "Microsoft.Network/networkInterfaces"
+		},
+		{
+			"name": "[variables('networkSecurityGroupName')]",
+			"apiVersion": "[providers('Microsoft.Network', 'networkSecurityGroups').apiVersions[0]]",
+			"dependsOn": [
+				"[variables('diagnosticsStorageAccountDeploymentName')]",
+				"[variables('storageAccountDeploymentName')]"
+			],
+			"location": "[resourceGroup().location]",
+			"properties": {
+				"securityRules": [
+					{
+						"name": "Default-Allow-Ldap",
+						"properties": {
+							"protocol": "TCP",
+							"sourcePortRange": "*",
+							"destinationPortRange": "389",
+							"sourceAddressPrefix": "*",
+							"destinationAddressPrefix": "*",
+							"access": "Allow",
+							"priority": 1000,
+							"direction": "Inbound"
+						}
+					},
+					{
+						"name": "Default-Allow-Rdp",
+						"properties": {
+							"protocol": "TCP",
+							"sourcePortRange": "*",
+							"destinationPortRange": "3389",
+							"sourceAddressPrefix": "*",
+							"destinationAddressPrefix": "*",
+							"access": "Allow",
+							"priority": 1010,
+							"direction": "Inbound"
+						}
+					}
+				]
+			},
+			"tags": "[variables('tags')]",
+			"type": "Microsoft.Network/networkSecurityGroups"
+		},
+		{
+			"name": "[variables('publicIPAddressName')]",
+			"apiVersion": "[providers('Microsoft.Network', 'publicIPAddresses').apiVersions[0]]",
+			"location": "[resourceGroup().location]",
+			"properties": {
+				"dnsSettings": {
+					"domainNameLabel": "[toLower(parameters('machineName'))]"
+				}
+			},
+			"tags": "[variables('tags')]",
+			"type": "Microsoft.Network/publicIPAddresses"
+		},
+		{
+			"name": "[variables('scheduleName')]",
+			"apiVersion": "[providers('Microsoft.DevTestLab', 'schedules').apiVersions[0]]",
+			"dependsOn": [
+				"[parameters('machineName')]"
+			],
+			"location": "[resourceGroup().location]",
+			"properties": {
+				"dailyRecurrence": {
+					"time": "1800"
+				},
+				"notificationSettings": {
+					"status": "Disabled",
+					"timeInMinutes": 30
+				},
+				"status": "Enabled",
+				"targetResourceId": "[resourceId('Microsoft.Compute/virtualMachines', parameters('machineName'))]",
+				"taskType": "ComputeVmShutdownTask",
+				"timeZoneId": "W. Europe Standard Time"
+			},
+			"type": "Microsoft.DevTestLab/schedules"
+		},
+		{
+			"name": "[variables('storageAccountDeploymentName')]",
+			"apiVersion": "[variables('deploymentApiVersion')]",
+			"properties": {
+				"mode": "[variables('deploymentMode')]",
+				"parameters": {
+					"storageAccountName": {
+						"value": "[variables('storageAccountName')]"
+					},
+					"tags": {
+						"value": "[variables('tags')]"
+					}
+				},
+				"templateLink": {
+					"contentVersion": "[variables('templateLinkContentVersion')]",
+					"uri": "[variables('storageAccountTemplateLinkUrl')]"
+				}
+			},
+			"type": "Microsoft.Resources/deployments"
+		},
+		{
+			"name": "[variables('virtualNetworkDeploymentName')]",
+			"apiVersion": "[variables('deploymentApiVersion')]",
+			"dependsOn": [
+				"[variables('networkSecurityGroupName')]"
+			],
+			"properties": {
+				"mode": "[variables('deploymentMode')]",
+				"parameters": {
+					"ipAddressFirstPart": {
+						"value": "[variables('ipAddressFirstPart')]"
+					},
+					"ipAddressSecondPart": {
+						"value": "[variables('ipAddressSecondPart')]"
+					},
+					"tags": {
+						"value": "[variables('tags')]"
+					},
+					"virtualNetworkName": {
+						"value": "[variables('virtualNetworkName')]"
+					}
+				},
+				"templateLink": {
+					"contentVersion": "[variables('templateLinkContentVersion')]",
+					"uri": "[variables('virtualNetworkTemplateLinkUrl')]"
+				}
+			},
+			"type": "Microsoft.Resources/deployments"
+		}
+	]
+}

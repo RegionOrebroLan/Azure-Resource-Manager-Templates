@@ -1,0 +1,260 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"machineName": {
+			"metadata": {
+				"description": "The name of the virtual machine."
+			},
+			"type": "string"
+		},
+		"password": {
+			"metadata": {
+				"description": "Password for everything in this deployment."
+			},
+			"type": "securestring"
+		},
+		"port": {
+			"defaultValue": 1433,
+			"metadata": {
+				"description": "Port for the SQL-Server. If you are behind a firewall with port-restrictions, try 8080, 80, 443 etc."
+			},
+			"type": "int"
+		},
+		"userName": {
+			"metadata": {
+				"description": "User-name for everything in this deployment."
+			},
+			"type": "securestring"
+		}
+	},
+	"variables": {
+		"_help": "https://docs.microsoft.com/en-us/azure/templates/microsoft.resources/deployments",
+		"backslash": "\\",
+		"deploymentApiVersion": "[providers('Microsoft.Resources', 'deployments').apiVersions[0]]",
+		"deploymentDirectoryUrl": "[concat(substring(variables('deploymentUrl'), 0, indexOf(toLower(variables('deploymentUrl')), '/azure-deploy.json')), '/')]",
+		"deploymentMode": "Incremental",
+		"deploymentUrl": "[string(deployment().properties.templateLink.uri)]",
+		"diagnosticsStorageAccountDeploymentName": "Diagnostics-Storage-Account-Deployment",
+		"diagnosticsStorageAccountName": "[replace(substring(concat(variables('internalResourceNamePrefix'), 'diagnostics', variables('internalResourceNameSuffix')), 0, 24), '-', '')]",
+		"internalResourceNamePrefix": "[replace(substring(concat(replace(replace(toLower(variables('resourceNamePrefix')), '-', ''), '_', ''), '----'), 0, 4), '-', '')]",
+		"internalResourceNameSuffix": "[concat(uniqueString(resourceGroup().id), '------------------------')]",
+		"ipAddress": "[concat(variables('ipAddressPrefix'), '0.10')]",
+		"ipAddressFirstPart": 10,
+		"ipAddressPrefix": "[concat(variables('ipAddressFirstPart'), '.', variables('ipAddressSecondPart'), '.')]",
+		"ipAddressSecondPart": 0,
+		"machineDeploymentName": "[concat(parameters('machineName'), '-Deployment')]",
+		"networkSecurityGroupDeploymentName": "[concat(variables('networkSecurityGroupName'), '-Deployment')]",
+		"networkSecurityGroupName": "[concat(variables('resourceNamePrefix'), 'Network-Security-Group')]",
+		"networkSecurityGroupResourceId": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroupName'))]",
+		"networkSecurityGroupTemplateLinkUrl": "[concat(variables('templateLinkDirectoryUrl'), 'Default-Network-Security-Group.json')]",
+		"repositoryUrl": "[concat(substring(variables('deploymentDirectoryUrl'), 0, indexOf(toLower(variables('deploymentDirectoryUrl')), '/templates/sql-server/')), '/')]",
+		"resourceNamePrefix": "[toUpper(concat(replace(substring(concat(first(split(parameters('machineName'), '-')), '--------------------'), 0, 20), '-', ''), '-'))]",
+		"sharedDirectoryUrl": "[concat(variables('repositoryUrl'), 'Shared/')]",
+		"storageAccountDeploymentName": "Storage-Account-Deployment",
+		"storageAccountName": "[replace(substring(concat(variables('internalResourceNamePrefix'), 'storage', variables('internalResourceNameSuffix')), 0, 24), '-', '')]",
+		"storageAccountTemplateLinkUrl": "[concat(variables('templateLinkDirectoryUrl'), 'Storage-Account.json')]",
+		"tags": {},
+		"tags-description": "A json-object parameter (keys and values) for tags for all resources in this deployment. Eg. { \"Cost-center\":, \"ABC-123\", \"Environment\": \"Production\" }",
+		"templateLinkContentVersion": "1.0.0.0",
+		"templateLinkDirectoryUrl": "[concat(variables('sharedDirectoryUrl'), 'Templates/')]",
+		"virtualNetworkDefaultSubnetResourceId": "[concat(variables('virtualNetworkResourceId'), '/subnets/Default-Subnet')]",
+		"virtualNetworkDeploymentName": "Virtual-Network-Deployment",
+		"virtualNetworkName": "[concat(variables('resourceNamePrefix'), 'Virtual-Network')]",
+		"virtualNetworkResourceId": "[resourceId('Microsoft.Network/virtualNetworks', variables('virtualNetworkName'))]",
+		"virtualNetworkTemplateLinkUrl": "[concat(variables('templateLinkDirectoryUrl'), 'Default-Virtual-Network.json')]",
+		"windowsServer2016WithSqlServerDeveloper2017TemplateLinkUrl": "[concat(variables('templateLinkDirectoryUrl'), 'Windows-Server-2016-With-SQL-Server-Developer-2017.json')]"
+	},
+	"resources": [
+		{
+			"name": "[variables('diagnosticsStorageAccountDeploymentName')]",
+			"apiVersion": "[variables('deploymentApiVersion')]",
+			"properties": {
+				"mode": "[variables('deploymentMode')]",
+				"parameters": {
+					"storageAccountName": {
+						"value": "[variables('diagnosticsStorageAccountName')]"
+					},
+					"tags": {
+						"value": "[variables('tags')]"
+					}
+				},
+				"templateLink": {
+					"contentVersion": "[variables('templateLinkContentVersion')]",
+					"uri": "[variables('storageAccountTemplateLinkUrl')]"
+				}
+			},
+			"type": "Microsoft.Resources/deployments"
+		},
+		{
+			"name": "[variables('machineDeploymentName')]",
+			"apiVersion": "[variables('deploymentApiVersion')]",
+			"dependsOn": [
+				"[variables('virtualNetworkDeploymentName')]"
+			],
+			"properties": {
+				"mode": "[variables('deploymentMode')]",
+				"parameters": {
+					"availability": {
+						"value": "Public-And-Public-With-443-To-3389-Redirect"
+					},
+					"diagnosticsStorageAccountName": {
+						"value": "[variables('diagnosticsStorageAccountName')]"
+					},
+					"ipAddress": {
+						"value": "[variables('ipAddress')]"
+					},
+					"networkSecurityGroupResourceId": {
+						"value": "[variables('networkSecurityGroupResourceId')]"
+					},
+					"password": {
+						"value": "[parameters('password')]"
+					},
+					"storageAccountName": {
+						"value": "[variables('storageAccountName')]"
+					},
+					"tags": {
+						"value": "[variables('tags')]"
+					},
+					"templateLinkDirectoryUrl": {
+						"value": "[variables('templateLinkDirectoryUrl')]"
+					},
+					"userName": {
+						"value": "[parameters('userName')]"
+					},
+					"virtualMachineName": {
+						"value": "[parameters('machineName')]"
+					},
+					"virtualNetworkSubnetResourceId": {
+						"value": "[variables('virtualNetworkDefaultSubnetResourceId')]"
+					}
+				},
+				"templateLink": {
+					"contentVersion": "[variables('templateLinkContentVersion')]",
+					"uri": "[variables('windowsServer2016WithSqlServerDeveloper2017TemplateLinkUrl')]"
+				}
+			},
+			"type": "Microsoft.Resources/deployments"
+		},
+		{
+			"name": "[concat(parameters('machineName'), '/SqlIaasExtension')]",
+			"apiVersion": "[providers('Microsoft.Compute', 'virtualMachines/extensions').apiVersions[0]]",
+			"dependsOn": [
+				"[variables('machineDeploymentName')]"
+			],
+			"location": "[resourceGroup().location]",
+			"properties": {
+				"autoUpgradeMinorVersion": "true",
+				"protectedSettings": {
+					"SQLAuthUpdatePassword": "[parameters('password')]",
+					"SQLAuthUpdateUserName": "[parameters('userName')]"
+				},
+				"publisher": "Microsoft.SqlServer.Management",
+				"settings": {
+					"AutoPatchingSettings": {
+						"DayOfWeek": "Sunday",
+						"Enable": true,
+						"MaintenanceWindowDuration": "60",
+						"MaintenanceWindowStartingHour": "2",
+						"PatchCategory": "WindowsMandatoryUpdates"
+					},
+					"AutoTelemetrySettings": {
+						"Region": "[resourceGroup().location]"
+					},
+					"KeyVaultCredentialSettings": {
+						"Enable": false,
+						"CredentialName": ""
+					},
+					"ServerConfigurationsManagementSettings": {
+						"AdditionalFeaturesServerConfigurations": {
+							"IsRServicesEnabled": "false"
+						},
+						"SQLConnectivityUpdateSettings": {
+							"ConnectivityType": "Public",
+							"Port": "[parameters('port')]"
+						},
+						"SQLWorkloadTypeUpdateSettings": {
+							"SQLWorkloadType": "GENERAL"
+						}
+					}
+				},
+				"type": "SqlIaaSAgent",
+				"typeHandlerVersion": "1.2"
+			},
+			"type": "Microsoft.Compute/virtualMachines/extensions"
+		},
+		{
+			"name": "[variables('networkSecurityGroupDeploymentName')]",
+			"apiVersion": "[variables('deploymentApiVersion')]",
+			"dependsOn": [
+				"[variables('diagnosticsStorageAccountDeploymentName')]",
+				"[variables('storageAccountDeploymentName')]"
+			],
+			"properties": {
+				"mode": "[variables('deploymentMode')]",
+				"parameters": {
+					"networkSecurityGroupName": {
+						"value": "[variables('networkSecurityGroupName')]"
+					},
+					"tags": {
+						"value": "[variables('tags')]"
+					}
+				},
+				"templateLink": {
+					"contentVersion": "[variables('templateLinkContentVersion')]",
+					"uri": "[variables('networkSecurityGroupTemplateLinkUrl')]"
+				}
+			},
+			"type": "Microsoft.Resources/deployments"
+		},
+		{
+			"name": "[variables('storageAccountDeploymentName')]",
+			"apiVersion": "[variables('deploymentApiVersion')]",
+			"properties": {
+				"mode": "[variables('deploymentMode')]",
+				"parameters": {
+					"storageAccountName": {
+						"value": "[variables('storageAccountName')]"
+					},
+					"tags": {
+						"value": "[variables('tags')]"
+					}
+				},
+				"templateLink": {
+					"contentVersion": "[variables('templateLinkContentVersion')]",
+					"uri": "[variables('storageAccountTemplateLinkUrl')]"
+				}
+			},
+			"type": "Microsoft.Resources/deployments"
+		},
+		{
+			"name": "[variables('virtualNetworkDeploymentName')]",
+			"apiVersion": "[variables('deploymentApiVersion')]",
+			"dependsOn": [
+				"[variables('networkSecurityGroupDeploymentName')]"
+			],
+			"properties": {
+				"mode": "[variables('deploymentMode')]",
+				"parameters": {
+					"ipAddressFirstPart": {
+						"value": "[variables('ipAddressFirstPart')]"
+					},
+					"ipAddressSecondPart": {
+						"value": "[variables('ipAddressSecondPart')]"
+					},
+					"tags": {
+						"value": "[variables('tags')]"
+					},
+					"virtualNetworkName": {
+						"value": "[variables('virtualNetworkName')]"
+					}
+				},
+				"templateLink": {
+					"contentVersion": "[variables('templateLinkContentVersion')]",
+					"uri": "[variables('virtualNetworkTemplateLinkUrl')]"
+				}
+			},
+			"type": "Microsoft.Resources/deployments"
+		}
+	]
+}

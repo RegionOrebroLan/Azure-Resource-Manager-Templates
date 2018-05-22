@@ -4,13 +4,17 @@ Templates to help you create resources in Azure.
 
 ## Templates
 
+### <img height="20" src="https://docs.microsoft.com/en-us/azure/active-directory/media/index/active-directory.svg" /> [Active-Directory](/Templates/Active-Directory/)
+
+### <img height="20" src="https://azure.microsoft.com/svghandler/sql-database/" />&nbsp; [SQL-Server](/Templates/SQL-Server/)
+
 ### <img height="20" src="https://106c4.wpc.azureedge.net/80106C4/Gallery-Prod/cdn/2015-02-24/prod20161101-microsoft-windowsazure-gallery/Microsoft.VirtualNetworkGateway-ARM.1.0.4/Icons/Small.png" /> [Virtual-Network-Gateway](/Templates/Virtual-Network-Gateway/)
 
-### <img height="20" src="https://docs.microsoft.com/en-us/azure/active-directory/media/index/active-directory.svg" /> [Web-Development-Domain](/Templates/Web-Development-Domain/)
+### <img height="20" src="https://docs.microsoft.com/en-us/azure/app-service/media/index/app-service-web.svg" /> [Web-Development-Domain](/Templates/Web-Development-Domain/)
 
 ### PowerShell-scripts
 
-You can deploy the templates by using PowerShell-scripts. Each "Howto" points out the script to run.
+You can deploy some of the templates by using PowerShell-scripts. Each "Howto" points out the script to run.
 
 **Only supported for Windows 10/Windows Server 2016 at the moment. New-SelfSignedCertificate is used with parameter HashAlgorithm for instance and that parameter is not supported in Windows 8.1. New-SelfSignedCertificate is not supported in Windows 7.**
 
