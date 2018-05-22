@@ -2,13 +2,13 @@
 
 This template is for creating an Active Directory machine to handle situations where you are behind a firewall with port-restrictions.
 
-<a href="https://portal.azure.com/#create/Microsoft.Template/uri/https%3a%2f%2fraw.githubusercontent.com%2fHansKindberg%2fAzure-Resource-Manager-Templates%2fmaster%2fTemplates%2fActive-Directory%2fAzure-Deploy.json">
+<a href="https://portal.azure.com/#create/Microsoft.Template/uri/https%3a%2f%2fraw.githubusercontent.com%2fRegionOrebroLan%2fAzure-Resource-Manager-Templates%2fmaster%2fTemplates%2fActive-Directory%2fAzure-Deploy.json">
     <img src="http://azuredeploy.net/deploybutton.png" />
 </a>
-<a href="https://portal.azure.us/#create/Microsoft.Template/uri/https%3a%2f%2fraw.githubusercontent.com%2fHansKindberg%2fAzure-Resource-Manager-Templates%2fmaster%2fTemplates%2fActive-Directory%2fAzure-Deploy.json">
+<a href="https://portal.azure.us/#create/Microsoft.Template/uri/https%3a%2f%2fraw.githubusercontent.com%2fRegionOrebroLan%2fAzure-Resource-Manager-Templates%2fmaster%2fTemplates%2fActive-Directory%2fAzure-Deploy.json">
     <img src="http://azuredeploy.net/azuregov.png" />
 </a>
-<a href="http://armviz.io/#/?load=https%3a%2f%2fraw.githubusercontent.com%2fHansKindberg%2fAzure-Resource-Manager-Templates%2fmaster%2fTemplates%2fActive-Directory%2fAzure-Deploy.json">
+<a href="http://armviz.io/#/?load=https%3a%2f%2fraw.githubusercontent.com%2fRegionOrebroLan%2fAzure-Resource-Manager-Templates%2fmaster%2fTemplates%2fActive-Directory%2fAzure-Deploy.json">
     <img src="http://armviz.io/visualizebutton.png" />
 </a>
 

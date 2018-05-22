@@ -2,13 +2,13 @@
 
 This template is for creating a SQL Server machine to handle situations where you are behind a firewall with port-restrictions. If you are not behind a firewall with port-restrctions you can create an Azure SQL Database that listens on port 1433.
 
-<a href="https://portal.azure.com/#create/Microsoft.Template/uri/https%3a%2f%2fraw.githubusercontent.com%2fHansKindberg%2fAzure-Resource-Manager-Templates%2fmaster%2fTemplates%2fSQL-Server%2fAzure-Deploy.json">
+<a href="https://portal.azure.com/#create/Microsoft.Template/uri/https%3a%2f%2fraw.githubusercontent.com%2fRegionOrebroLan%2fAzure-Resource-Manager-Templates%2fmaster%2fTemplates%2fSQL-Server%2fAzure-Deploy.json">
     <img src="http://azuredeploy.net/deploybutton.png" />
 </a>
-<a href="https://portal.azure.us/#create/Microsoft.Template/uri/https%3a%2f%2fraw.githubusercontent.com%2fHansKindberg%2fAzure-Resource-Manager-Templates%2fmaster%2fTemplates%2fSQL-Server%2fAzure-Deploy.json">
+<a href="https://portal.azure.us/#create/Microsoft.Template/uri/https%3a%2f%2fraw.githubusercontent.com%2fRegionOrebroLan%2fAzure-Resource-Manager-Templates%2fmaster%2fTemplates%2fSQL-Server%2fAzure-Deploy.json">
     <img src="http://azuredeploy.net/azuregov.png" />
 </a>
-<a href="http://armviz.io/#/?load=https%3a%2f%2fraw.githubusercontent.com%2fHansKindberg%2fAzure-Resource-Manager-Templates%2fmaster%2fTemplates%2fSQL-Server%2fAzure-Deploy.json">
+<a href="http://armviz.io/#/?load=https%3a%2f%2fraw.githubusercontent.com%2fRegionOrebroLan%2fAzure-Resource-Manager-Templates%2fmaster%2fTemplates%2fSQL-Server%2fAzure-Deploy.json">
     <img src="http://armviz.io/visualizebutton.png" />
 </a>
 
